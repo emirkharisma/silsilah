@@ -98,6 +98,11 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
           >
             {person.jenis_kelamin === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
           </span>
+          {person.urutan_lahir && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+              Anak ke-{person.urutan_lahir}
+            </span>
+          )}
           {person.is_deceased && (
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
               Almarhum/ah

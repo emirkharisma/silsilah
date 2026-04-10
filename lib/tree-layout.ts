@@ -10,6 +10,7 @@ export type PersonData = {
   nama_panggilan: string | null;
   jenis_kelamin: JenisKelamin;
   is_deceased: boolean;
+  urutan_lahir: number | null;
   foto_url: string | null;
 };
 

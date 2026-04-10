@@ -31,6 +31,7 @@ model Person {
   nama_panggilan String?      @db.VarChar(100)
   jenis_kelamin  JenisKelamin
   is_deceased    Boolean      @default(false)
+  urutan_lahir   Int?
   foto_url       String?
   catatan        String?
   created_at     DateTime     @default(now())

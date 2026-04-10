@@ -15,6 +15,7 @@ type FormState = {
   nama_panggilan: string;
   jenis_kelamin: JenisKelamin;
   is_deceased: boolean;
+  urutan_lahir: string;
   catatan: string;
   foto_url: string;
   ayah_id: string;
@@ -28,6 +29,7 @@ const emptyForm = (): FormState => ({
   nama_panggilan: "",
   jenis_kelamin: "LAKI_LAKI",
   is_deceased: false,
+  urutan_lahir: "",
   catatan: "",
   foto_url: "",
   ayah_id: "",
@@ -82,6 +84,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
       nama_panggilan: p.nama_panggilan ?? "",
       jenis_kelamin: p.jenis_kelamin,
       is_deceased: p.is_deceased,
+      urutan_lahir: p.urutan_lahir?.toString() ?? "",
       catatan: p.catatan ?? "",
       foto_url: p.foto_url ?? "",
       ayah_id: getAyah(p.id),
@@ -129,6 +132,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
           nama_panggilan: form.nama_panggilan || null,
           jenis_kelamin: form.jenis_kelamin,
           is_deceased: form.is_deceased,
+          urutan_lahir: form.urutan_lahir ? Number(form.urutan_lahir) : null,
           catatan: form.catatan || null,
           foto_url: form.foto_url || null,
         }),
@@ -359,6 +363,11 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                 <option value="PEREMPUAN">Perempuan</option>
               </select>
             </div>
+          </div>
+          <div>
+            <label className="label">Anak ke- (urutan lahir)</label>
+            <input type="number" min="1" className="input w-24" placeholder="1, 2, 3..."
+              value={form.urutan_lahir} onChange={(e) => set("urutan_lahir", e.target.value)} />
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
             <input type="checkbox" checked={form.is_deceased}

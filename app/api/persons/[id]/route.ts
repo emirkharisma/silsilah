@@ -34,6 +34,7 @@ export async function PUT(
     nama_panggilan,
     jenis_kelamin,
     is_deceased,
+    urutan_lahir,
     foto_url,
     catatan,
   } = body;
@@ -45,6 +46,7 @@ export async function PUT(
       nama_panggilan: nama_panggilan || null,
       jenis_kelamin,
       is_deceased,
+      urutan_lahir: urutan_lahir ? Number(urutan_lahir) : null,
       foto_url: foto_url || null,
       catatan: catatan || null,
     },
