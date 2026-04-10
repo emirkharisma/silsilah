@@ -1,6 +1,5 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -12,14 +11,9 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.password) return null;
 
-        const valid = await bcrypt.compare(
-          credentials.password,
-          process.env.ADMIN_PASSWORD_HASH!
-        );
+        if (credentials.password !== process.env.ADMIN_PASSWORD) return null;
 
-        if (!valid) return null;
-
-        return { id: "admin", email: process.env.ADMIN_EMAIL! };
+        return { id: "admin", email: "admin" };
       },
     }),
   ],
