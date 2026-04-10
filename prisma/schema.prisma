@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum JenisKelamin {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum TipeRelasi {
+  AYAH_KANDUNG
+  IBU_KANDUNG
+  AYAH_TIRI
+  IBU_TIRI
+  ANAK_ANGKAT
+}
+
+enum StatusPernikahan {
+  AKTIF
+  CERAI
+  MENINGGAL
+}
+
+model Person {
+  id             String       @id @default(uuid())
+  nama_lengkap   String       @db.VarChar(255)
+  nama_panggilan String?      @db.VarChar(100)
+  jenis_kelamin  JenisKelamin
+  is_deceased    Boolean      @default(false)
+  foto_url       String?
+  catatan        String?
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
+
+  relationships Relationship[] @relation("PersonRelationships")
+  related_to    Relationship[] @relation("RelatedPersonRelationships")
+  marriages_a   Marriage[]     @relation("PersonAMarriages")
+  marriages_b   Marriage[]     @relation("PersonBMarriages")
+
+  @@map("persons")
+}
+
+model Relationship {
+  id         String     @id @default(uuid())
+  person_id  String
+  related_id String
+  tipe       TipeRelasi
+  created_at DateTime   @default(now())
+
+  person  Person @relation("PersonRelationships", fields: [person_id], references: [id], onDelete: Cascade)
+  related Person @relation("RelatedPersonRelationships", fields: [related_id], references: [id], onDelete: Cascade)
+
+  @@index([person_id])
+  @@index([related_id])
+  @@map("relationships")
+}
+
+model Marriage {
+  id          String           @id @default(uuid())
+  person_a_id String
+  person_b_id String
+  status      StatusPernikahan
+  urutan      Int
+  created_at  DateTime         @default(now())
+
+  person_a Person @relation("PersonAMarriages", fields: [person_a_id], references: [id], onDelete: Cascade)
+  person_b Person @relation("PersonBMarriages", fields: [person_b_id], references: [id], onDelete: Cascade)
+
+  @@index([person_a_id])
+  @@index([person_b_id])
+  @@map("marriages")
+}
+
+model AdminUser {
+  id            String   @id @default(uuid())
+  email         String   @unique @db.VarChar(255)
+  password_hash String   @db.VarChar(255)
+  created_at    DateTime @default(now())
+
+  @@map("admin_users")
+}
