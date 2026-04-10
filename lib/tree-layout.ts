@@ -173,15 +173,20 @@ export function buildTreeLayout(
     });
   }
 
-  // Couple nodes: midpoint between spouses, same Y
+  // Couple nodes: midpoint between spouses, force same Y for perfectly horizontal lines
   const couplePos = new Map<string, { x: number; y: number }>();
   for (const [coupleId, { a, b }] of coupleMap) {
     const posA = personPos.get(a);
     const posB = personPos.get(b);
     if (!posA || !posB) continue;
 
+    // Force both spouses to share the same Y (average), so lines are perfectly horizontal
+    const sharedY = (posA.y + posB.y) / 2;
+    personPos.set(a, { x: posA.x, y: sharedY });
+    personPos.set(b, { x: posB.x, y: sharedY });
+
     const cx = (posA.x + posB.x) / 2;
-    const cy = Math.max(posA.y, posB.y); // same rank as spouses
+    const cy = sharedY;
     couplePos.set(coupleId, { x: cx, y: cy });
 
     const personA = personById.get(a);
