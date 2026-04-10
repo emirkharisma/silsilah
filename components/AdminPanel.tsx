@@ -364,11 +364,6 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
               </select>
             </div>
           </div>
-          <div>
-            <label className="label">Anak ke- (urutan lahir)</label>
-            <input type="number" min="1" className="input w-24" placeholder="1, 2, 3..."
-              value={form.urutan_lahir} onChange={(e) => set("urutan_lahir", e.target.value)} />
-          </div>
           <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
             <input type="checkbox" checked={form.is_deceased}
               onChange={(e) => set("is_deceased", e.target.checked)}
@@ -410,6 +405,13 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                 </select>
               </div>
             </div>
+            {(form.ayah_id || form.ibu_id) && (
+              <div className="mt-3">
+                <label className="label">Anak ke- (urutan lahir)</label>
+                <input type="number" min="1" className="input w-24" placeholder="1, 2, 3..."
+                  value={form.urutan_lahir} onChange={(e) => set("urutan_lahir", e.target.value)} />
+              </div>
+            )}
           </div>
 
           {/* Marriage */}

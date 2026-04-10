@@ -58,16 +58,20 @@ export function buildTreeLayout(
     g.setNode(p.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
   }
 
-  // Add person→child edges (skipping couple nodes entirely)
-  for (const rel of relationships) {
-    if (
-      rel.tipe !== "AYAH_KANDUNG" &&
-      rel.tipe !== "IBU_KANDUNG" &&
-      rel.tipe !== "AYAH_TIRI" &&
-      rel.tipe !== "IBU_TIRI"
-    )
-      continue;
-
+  // Add person→child edges sorted by urutan_lahir so dagre places siblings in order
+  const parentEdges = relationships.filter(
+    (r) =>
+      r.tipe === "AYAH_KANDUNG" ||
+      r.tipe === "IBU_KANDUNG" ||
+      r.tipe === "AYAH_TIRI" ||
+      r.tipe === "IBU_TIRI"
+  );
+  parentEdges.sort((a, b) => {
+    const ua = personById.get(a.person_id)?.urutan_lahir ?? 999;
+    const ub = personById.get(b.person_id)?.urutan_lahir ?? 999;
+    return ua - ub;
+  });
+  for (const rel of parentEdges) {
     g.setEdge(rel.related_id, rel.person_id);
   }
 
@@ -106,7 +110,15 @@ export function buildTreeLayout(
     levelGroups.get(y)!.push(p.id);
   }
   for (const ids of levelGroups.values()) {
-    ids.sort((a, b) => (personPos.get(a)?.x ?? 0) - (personPos.get(b)?.x ?? 0));
+    ids.sort((a, b) => {
+      const ua = personById.get(a)?.urutan_lahir;
+      const ub = personById.get(b)?.urutan_lahir;
+      // If both have urutan_lahir, sort by it; otherwise fall back to dagre X
+      if (ua != null && ub != null) return ua - ub;
+      if (ua != null) return -1;
+      if (ub != null) return 1;
+      return (personPos.get(a)?.x ?? 0) - (personPos.get(b)?.x ?? 0);
+    });
   }
 
   // Insert each menantu right after their spouse in the level group
