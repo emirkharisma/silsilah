@@ -53,6 +53,9 @@ export function buildTreeLayout(
     if (!personToCouple.has(b)) personToCouple.set(b, coupleId);
   }
 
+  // Build personById early so it can be used for sorting
+  const personById = new Map(persons.map((p) => [p.id, p]));
+
   // Add only PERSON nodes to dagre
   for (const p of persons) {
     g.setNode(p.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
@@ -79,7 +82,6 @@ export function buildTreeLayout(
 
   // Read person positions from dagre
   const personPos = new Map<string, { x: number; y: number }>();
-  const personById = new Map(persons.map((p) => [p.id, p]));
   for (const p of persons) {
     const pos = g.node(p.id);
     if (pos) personPos.set(p.id, { x: pos.x, y: pos.y });
