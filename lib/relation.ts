@@ -163,6 +163,14 @@ export function calculateRelation(
     // No blood relation — check in-law via marriage
     const isMaleB = personB.jenis_kelamin === "LAKI_LAKI";
 
+    // Check if A and B are directly married
+    const directlyMarried = marriages.some(
+      (m) =>
+        (m.person_a_id === personAId && m.person_b_id === personBId) ||
+        (m.person_a_id === personBId && m.person_b_id === personAId)
+    );
+    if (directlyMarried) return isMaleB ? "suami" : "istri";
+
     // Get spouses of B
     const spousesOfB = marriages
       .filter((m) => m.person_a_id === personBId || m.person_b_id === personBId)
