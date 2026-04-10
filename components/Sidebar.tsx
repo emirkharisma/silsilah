@@ -10,7 +10,7 @@ interface SidebarProps {
 }
 
 interface RelationResult {
-  label: string;
+  relation: string;
 }
 
 export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
@@ -130,14 +130,14 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
               <span className="text-slate-400">Menghitung...</span>
             ) : relation ? (
               <>
-                <span className="font-medium text-indigo-700">{person.nama_panggilan || person.nama_lengkap.split(" ")[0]}</span>
-                <span className="text-slate-500"> adalah </span>
-                <span className="font-medium text-slate-800">{relation.label}</span>
-                <span className="text-slate-500"> dari </span>
                 <span className="font-medium text-indigo-700">
                   {allPersons.find((p) => p.id === compareId)?.nama_panggilan ||
                     allPersons.find((p) => p.id === compareId)?.nama_lengkap.split(" ")[0]}
                 </span>
+                <span className="text-slate-500"> adalah </span>
+                <span className="font-medium text-slate-800">{relation.relation}</span>
+                <span className="text-slate-500"> dari </span>
+                <span className="font-medium text-indigo-700">{person.nama_panggilan || person.nama_lengkap.split(" ")[0]}</span>
               </>
             ) : (
               <span className="text-slate-400">Hubungan tidak ditemukan</span>

@@ -1,4 +1,5 @@
-import { JenisKelamin, TipeRelasi } from "@prisma/client";
+type JenisKelamin = "LAKI_LAKI" | "PEREMPUAN";
+type TipeRelasi = "AYAH_KANDUNG" | "IBU_KANDUNG" | "AYAH_TIRI" | "IBU_TIRI" | "ANAK_ANGKAT";
 
 type PersonNode = {
   id: string;
@@ -46,8 +47,8 @@ function getAncestors(
       if (!visited.has(p.related_id)) {
         const isStep =
           current.viaStep ||
-          p.tipe === TipeRelasi.AYAH_TIRI ||
-          p.tipe === TipeRelasi.IBU_TIRI;
+          p.tipe === "AYAH_TIRI" ||
+          p.tipe === "IBU_TIRI";
         queue.push({
           id: p.related_id,
           distance: current.distance + 1,
@@ -66,7 +67,7 @@ function getRelationLabel(
   targetGender: JenisKelamin,
   viaStep: boolean
 ): string {
-  const isMale = targetGender === JenisKelamin.LAKI_LAKI;
+  const isMale = targetGender === "LAKI_LAKI";
   const step = viaStep ? " tiri" : "";
 
   // Direct line: A looking at B
@@ -158,7 +159,52 @@ export function calculateRelation(
     }
   }
 
-  if (!lca) return "tidak ada hubungan keluarga";
+  if (!lca) {
+    // No blood relation — check in-law via marriage
+    const isMaleB = personB.jenis_kelamin === "LAKI_LAKI";
+
+    // Get spouses of B
+    const spousesOfB = marriages
+      .filter((m) => m.person_a_id === personBId || m.person_b_id === personBId)
+      .map((m) => (m.person_a_id === personBId ? m.person_b_id : m.person_a_id));
+
+    for (const spouseId of spousesOfB) {
+      const bloodRelation = calculateRelation(personAId, spouseId, persons, relationships, []);
+      if (!bloodRelation || bloodRelation === "tidak ada hubungan keluarga") continue;
+      // B is in-law of A through spouse
+      if (bloodRelation === "anak laki-laki" || bloodRelation === "anak perempuan") {
+        return isMaleB ? "menantu laki-laki" : "menantu perempuan";
+      }
+      if (bloodRelation === "ayah" || bloodRelation === "ibu") {
+        return isMaleB ? "mertua laki-laki" : "mertua perempuan";
+      }
+      if (bloodRelation?.startsWith("saudara")) {
+        return isMaleB ? "ipar laki-laki" : "ipar perempuan";
+      }
+      return `pasangan ${bloodRelation}`;
+    }
+
+    // Get spouses of A
+    const spousesOfA = marriages
+      .filter((m) => m.person_a_id === personAId || m.person_b_id === personAId)
+      .map((m) => (m.person_a_id === personAId ? m.person_b_id : m.person_a_id));
+
+    for (const spouseId of spousesOfA) {
+      const bloodRelation = calculateRelation(personBId, spouseId, persons, relationships, []);
+      if (!bloodRelation || bloodRelation === "tidak ada hubungan keluarga") continue;
+      if (bloodRelation === "anak laki-laki" || bloodRelation === "anak perempuan") {
+        return isMaleB ? "mertua laki-laki" : "mertua perempuan";
+      }
+      if (bloodRelation === "ayah" || bloodRelation === "ibu") {
+        return isMaleB ? "menantu laki-laki" : "menantu perempuan";
+      }
+      if (bloodRelation?.startsWith("saudara")) {
+        return isMaleB ? "ipar laki-laki" : "ipar perempuan";
+      }
+    }
+
+    return "tidak ada hubungan keluarga";
+  }
 
   return getRelationLabel(
     lcaDistA,
@@ -185,7 +231,7 @@ export function getAncestorPath(
     if (person) path.push(person.nama_lengkap);
 
     // Prefer kandung parent, fall back to tiri
-    const priority: TipeRelasi[] = [TipeRelasi.AYAH_KANDUNG, TipeRelasi.IBU_KANDUNG];
+    const priority: TipeRelasi[] = ["AYAH_KANDUNG", "IBU_KANDUNG"];
     const parents = relationships
       .filter((r) => r.person_id === current)
       .sort((a, b) => {
