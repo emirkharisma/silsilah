@@ -1,6 +1,8 @@
 import dagre from "@dagrejs/dagre";
 import { Edge, Node } from "@xyflow/react";
-import { JenisKelamin, StatusPernikahan, TipeRelasi } from "@prisma/client";
+type JenisKelamin = "LAKI_LAKI" | "PEREMPUAN";
+type StatusPernikahan = "AKTIF" | "CERAI" | "MENINGGAL";
+type TipeRelasi = "AYAH_KANDUNG" | "IBU_KANDUNG" | "AYAH_TIRI" | "IBU_TIRI" | "ANAK_ANGKAT";
 
 export type PersonData = {
   id: string;
@@ -58,10 +60,10 @@ export function buildTreeLayout(
   // Add person→child edges (skipping couple nodes entirely)
   for (const rel of relationships) {
     if (
-      rel.tipe !== TipeRelasi.AYAH_KANDUNG &&
-      rel.tipe !== TipeRelasi.IBU_KANDUNG &&
-      rel.tipe !== TipeRelasi.AYAH_TIRI &&
-      rel.tipe !== TipeRelasi.IBU_TIRI
+      rel.tipe !== "AYAH_KANDUNG" &&
+      rel.tipe !== "IBU_KANDUNG" &&
+      rel.tipe !== "AYAH_TIRI" &&
+      rel.tipe !== "IBU_TIRI"
     )
       continue;
 
@@ -123,7 +125,7 @@ export function buildTreeLayout(
     const posB = personPos.get(b);
     if (!cp || !posA || !posB) continue;
 
-    const isCerai = status === StatusPernikahan.CERAI;
+    const isCerai = status === "CERAI";
     const edgeStyle = isCerai
       ? { strokeDasharray: "6,3", stroke: "#f97316" }
       : { stroke: "#94a3b8" };
@@ -157,10 +159,10 @@ export function buildTreeLayout(
 
   for (const rel of relationships) {
     if (
-      rel.tipe !== TipeRelasi.AYAH_KANDUNG &&
-      rel.tipe !== TipeRelasi.IBU_KANDUNG &&
-      rel.tipe !== TipeRelasi.AYAH_TIRI &&
-      rel.tipe !== TipeRelasi.IBU_TIRI
+      rel.tipe !== "AYAH_KANDUNG" &&
+      rel.tipe !== "IBU_KANDUNG" &&
+      rel.tipe !== "AYAH_TIRI" &&
+      rel.tipe !== "IBU_TIRI"
     )
       continue;
 
@@ -174,7 +176,7 @@ export function buildTreeLayout(
     addedChildEdges.add(edgeId);
 
     const isStep =
-      rel.tipe === TipeRelasi.AYAH_TIRI || rel.tipe === TipeRelasi.IBU_TIRI;
+      rel.tipe === "AYAH_TIRI" || rel.tipe === "IBU_TIRI";
 
     edges.push({
       id: edgeId,
