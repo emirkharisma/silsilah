@@ -69,6 +69,9 @@ export default function TreeView({
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.2}
