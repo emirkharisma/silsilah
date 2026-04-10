@@ -80,6 +80,31 @@ export function buildTreeLayout(
     if (pos) personPos.set(p.id, { x: pos.x, y: pos.y });
   }
 
+  // Build set of persons who have parents in this tree
+  const hasParent = new Set<string>();
+  for (const rel of relationships) {
+    if (
+      rel.tipe === "AYAH_KANDUNG" ||
+      rel.tipe === "IBU_KANDUNG" ||
+      rel.tipe === "AYAH_TIRI" ||
+      rel.tipe === "IBU_TIRI"
+    ) {
+      hasParent.add(rel.person_id);
+    }
+  }
+
+  // For each marriage, if one spouse has no parents (menantu), align their Y to the other spouse
+  for (const { a, b } of coupleMap.values()) {
+    const posA = personPos.get(a);
+    const posB = personPos.get(b);
+    if (!posA || !posB) continue;
+    if (!hasParent.has(a) && hasParent.has(b)) {
+      personPos.set(a, { x: posA.x, y: posB.y });
+    } else if (!hasParent.has(b) && hasParent.has(a)) {
+      personPos.set(b, { x: posB.x, y: posA.y });
+    }
+  }
+
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
