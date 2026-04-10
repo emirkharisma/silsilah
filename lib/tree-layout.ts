@@ -93,15 +93,19 @@ export function buildTreeLayout(
     }
   }
 
-  // For each marriage, if one spouse has no parents (menantu), align their Y to the other spouse
+  // For each marriage, if one spouse has no parents (menantu), place them right next to their spouse
   for (const { a, b } of coupleMap.values()) {
     const posA = personPos.get(a);
     const posB = personPos.get(b);
     if (!posA || !posB) continue;
     if (!hasParent.has(a) && hasParent.has(b)) {
-      personPos.set(a, { x: posA.x, y: posB.y });
+      // a is menantu — place to the left or right of b based on original relative position
+      const side = posA.x >= posB.x ? 1 : -1;
+      personPos.set(a, { x: posB.x + side * (NODE_WIDTH + 80), y: posB.y });
     } else if (!hasParent.has(b) && hasParent.has(a)) {
-      personPos.set(b, { x: posB.x, y: posA.y });
+      // b is menantu — place to the left or right of a based on original relative position
+      const side = posB.x >= posA.x ? 1 : -1;
+      personPos.set(b, { x: posA.x + side * (NODE_WIDTH + 80), y: posA.y });
     }
   }
 
