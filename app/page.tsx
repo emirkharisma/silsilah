@@ -17,6 +17,7 @@ export default async function Home() {
     nama_panggilan: p.nama_panggilan,
     jenis_kelamin: p.jenis_kelamin,
     is_deceased: p.is_deceased,
+    urutan_lahir: p.urutan_lahir,
     foto_url: p.foto_url,
   }));
 
