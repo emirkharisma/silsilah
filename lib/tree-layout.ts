@@ -260,8 +260,8 @@ export function buildTreeLayout(
     couplePairLookup.set(`${b}_${a}`, coupleId);
   }
 
-  // Build child → parents map
-  const childParents = new Map<string, string[]>();
+  // Build child → all parents map
+  const childParentsMap = new Map<string, string[]>();
   for (const rel of relationships) {
     if (
       rel.tipe !== "AYAH_KANDUNG" &&
@@ -269,48 +269,51 @@ export function buildTreeLayout(
       rel.tipe !== "AYAH_TIRI" &&
       rel.tipe !== "IBU_TIRI"
     ) continue;
-    if (!childParents.has(rel.person_id)) childParents.set(rel.person_id, []);
-    childParents.get(rel.person_id)!.push(rel.related_id);
+    if (!childParentsMap.has(rel.person_id)) childParentsMap.set(rel.person_id, []);
+    childParentsMap.get(rel.person_id)!.push(rel.related_id);
   }
 
-  // Parent→child edges: find the correct couple for each child's specific parents
+  // Parent→child edges
   const addedChildEdges = new Set<string>();
 
-  for (const [childId, parents] of childParents) {
-    // Find the couple that contains these exact parents
-    let sourceId: string | null = null;
-    if (parents.length >= 2) {
-      for (let i = 0; i < parents.length && !sourceId; i++) {
-        for (let j = i + 1; j < parents.length && !sourceId; j++) {
-          const cId = couplePairLookup.get(`${parents[i]}_${parents[j]}`);
-          if (cId && couplePos.has(cId)) sourceId = cId;
-        }
-      }
+  for (const rel of relationships) {
+    if (
+      rel.tipe !== "AYAH_KANDUNG" &&
+      rel.tipe !== "IBU_KANDUNG" &&
+      rel.tipe !== "AYAH_TIRI" &&
+      rel.tipe !== "IBU_TIRI"
+    ) continue;
+
+    const parentId = rel.related_id;
+    const childId = rel.person_id;
+
+    // Find the correct couple using this parent + the child's other parent
+    const allParents = childParentsMap.get(childId) ?? [];
+    const otherParents = allParents.filter((p) => p !== parentId);
+    let sourceId: string = parentId;
+    for (const otherId of otherParents) {
+      const cId = couplePairLookup.get(`${parentId}_${otherId}`);
+      if (cId && couplePos.has(cId)) { sourceId = cId; break; }
     }
-    // Fallback: use first parent's couple or the parent itself
-    if (!sourceId) {
-      const cId = personToCouple.get(parents[0]);
-      sourceId = cId && couplePos.has(cId) ? cId : parents[0];
+    // Fallback: use this parent's couple if available
+    if (sourceId === parentId) {
+      const cId = personToCouple.get(parentId);
+      if (cId && couplePos.has(cId)) sourceId = cId;
     }
 
     const edgeId = `${sourceId}->${childId}`;
     if (addedChildEdges.has(edgeId)) continue;
     addedChildEdges.add(edgeId);
 
-    const parentRels = relationships.filter(
-      (r) => r.person_id === childId && parents.includes(r.related_id)
-    );
-    const isStep = parentRels.some(
-      (r) => r.tipe === "AYAH_TIRI" || r.tipe === "IBU_TIRI"
-    );
-
+    const isStep = rel.tipe === "AYAH_TIRI" || rel.tipe === "IBU_TIRI";
     const isFromCouple = couplePos.has(sourceId);
+
     edges.push({
       id: edgeId,
       source: sourceId,
       target: childId,
       sourceHandle: isFromCouple ? "bottom" : undefined,
-      type: "smoothstep",
+      type: "step",
       style: isStep
         ? { strokeDasharray: "5,5", stroke: "#94a3b8" }
         : { stroke: "#94a3b8" },
