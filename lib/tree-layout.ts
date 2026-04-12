@@ -253,30 +253,56 @@ export function buildTreeLayout(
     });
   }
 
-  // Parent→child edges (from couple dot or single parent)
-  // Track which child edges have already been added (dedup)
-  const addedChildEdges = new Set<string>();
+  // Build couple lookup by member pair: "idA_idB" → coupleId
+  const couplePairLookup = new Map<string, string>();
+  for (const [coupleId, { a, b }] of coupleMap) {
+    couplePairLookup.set(`${a}_${b}`, coupleId);
+    couplePairLookup.set(`${b}_${a}`, coupleId);
+  }
 
+  // Build child → parents map
+  const childParents = new Map<string, string[]>();
   for (const rel of relationships) {
     if (
       rel.tipe !== "AYAH_KANDUNG" &&
       rel.tipe !== "IBU_KANDUNG" &&
       rel.tipe !== "AYAH_TIRI" &&
       rel.tipe !== "IBU_TIRI"
-    )
-      continue;
+    ) continue;
+    if (!childParents.has(rel.person_id)) childParents.set(rel.person_id, []);
+    childParents.get(rel.person_id)!.push(rel.related_id);
+  }
 
-    const parentId = rel.related_id;
-    const childId = rel.person_id;
-    const coupleId = personToCouple.get(parentId);
+  // Parent→child edges: find the correct couple for each child's specific parents
+  const addedChildEdges = new Set<string>();
 
-    const sourceId = coupleId && couplePos.has(coupleId) ? coupleId : parentId;
+  for (const [childId, parents] of childParents) {
+    // Find the couple that contains these exact parents
+    let sourceId: string | null = null;
+    if (parents.length >= 2) {
+      for (let i = 0; i < parents.length && !sourceId; i++) {
+        for (let j = i + 1; j < parents.length && !sourceId; j++) {
+          const cId = couplePairLookup.get(`${parents[i]}_${parents[j]}`);
+          if (cId && couplePos.has(cId)) sourceId = cId;
+        }
+      }
+    }
+    // Fallback: use first parent's couple or the parent itself
+    if (!sourceId) {
+      const cId = personToCouple.get(parents[0]);
+      sourceId = cId && couplePos.has(cId) ? cId : parents[0];
+    }
+
     const edgeId = `${sourceId}->${childId}`;
     if (addedChildEdges.has(edgeId)) continue;
     addedChildEdges.add(edgeId);
 
-    const isStep =
-      rel.tipe === "AYAH_TIRI" || rel.tipe === "IBU_TIRI";
+    const parentRels = relationships.filter(
+      (r) => r.person_id === childId && parents.includes(r.related_id)
+    );
+    const isStep = parentRels.some(
+      (r) => r.tipe === "AYAH_TIRI" || r.tipe === "IBU_TIRI"
+    );
 
     edges.push({
       id: edgeId,
