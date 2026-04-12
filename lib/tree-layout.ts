@@ -136,10 +136,15 @@ export function buildTreeLayout(
     }
   }
 
-  // Get couple's approximate X from its members' dagre positions
+  // Get couple's approximate X — use only the in-tree spouse's dagre X
+  // (menantus have no parent edges so dagre places them at rank 0, giving wrong average)
   const coupleApproxX = (coupleId: string): number => {
     const c = coupleMap.get(coupleId);
     if (!c) return 0;
+    const aInTree = hasParent.has(c.a);
+    const bInTree = hasParent.has(c.b);
+    if (aInTree && !bInTree) return personPos.get(c.a)?.x ?? 0;
+    if (bInTree && !aInTree) return personPos.get(c.b)?.x ?? 0;
     const xa = personPos.get(c.a)?.x ?? 0;
     const xb = personPos.get(c.b)?.x ?? 0;
     return (xa + xb) / 2;
