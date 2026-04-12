@@ -123,25 +123,42 @@ export function buildTreeLayout(
     });
   }
 
-  // Insert each menantu right after their spouse in the level group
+  // Collect menantus per in-tree spouse
+  const personMenantus = new Map<string, string[]>();
   for (const { a, b } of coupleMap.values()) {
     const aHasParent = hasParent.has(a);
     const bHasParent = hasParent.has(b);
     if (aHasParent === bHasParent) continue;
-
     const spouseId = aHasParent ? a : b;
     const menantuid = aHasParent ? b : a;
+    if (!personMenantus.has(spouseId)) personMenantus.set(spouseId, []);
+    personMenantus.get(spouseId)!.push(menantuid);
+  }
+
+  // Insert menantus: if single → right; if multiple → first left, rest right
+  for (const [spouseId, menantus] of personMenantus) {
     const spousePos = personPos.get(spouseId);
     if (!spousePos) continue;
-
     const y = Math.round(spousePos.y);
     const group = levelGroups.get(y);
     if (!group) continue;
-
-    const spouseIdx = group.indexOf(spouseId);
+    let spouseIdx = group.indexOf(spouseId);
     if (spouseIdx === -1) continue;
-    group.splice(spouseIdx + 1, 0, menantuid);
-    personPos.set(menantuid, { x: 0, y: spousePos.y }); // placeholder
+
+    if (menantus.length === 1) {
+      group.splice(spouseIdx + 1, 0, menantus[0]);
+      personPos.set(menantus[0], { x: 0, y: spousePos.y });
+    } else {
+      // First menantu goes LEFT (before spouse)
+      group.splice(spouseIdx, 0, menantus[0]);
+      personPos.set(menantus[0], { x: 0, y: spousePos.y });
+      spouseIdx += 1; // spouse shifted right
+      // Remaining menantus go RIGHT (after spouse)
+      for (let i = 1; i < menantus.length; i++) {
+        group.splice(spouseIdx + i, 0, menantus[i]);
+        personPos.set(menantus[i], { x: 0, y: spousePos.y });
+      }
+    }
   }
 
   // Re-space each level group, keeping center of in-tree nodes
