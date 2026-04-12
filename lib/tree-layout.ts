@@ -313,7 +313,7 @@ export function buildTreeLayout(
       source: sourceId,
       target: childId,
       sourceHandle: isFromCouple ? "bottom" : undefined,
-      type: "step",
+      type: "familyEdge",
       style: isStep
         ? { strokeDasharray: "5,5", stroke: "#94a3b8" }
         : { stroke: "#94a3b8" },

@@ -15,11 +15,16 @@ import "@xyflow/react/dist/style.css";
 
 import PersonNode from "./PersonNode";
 import CoupleNode from "./CoupleNode";
+import FamilyEdge from "./FamilyEdge";
 import { buildTreeLayout, PersonData, RelationshipData, MarriageData } from "@/lib/tree-layout";
 
 const nodeTypes: NodeTypes = {
   personNode: PersonNode,
   coupleNode: CoupleNode,
+};
+
+const edgeTypes = {
+  familyEdge: FamilyEdge,
 };
 
 interface TreeViewProps {
@@ -69,6 +74,7 @@ export default function TreeView({
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
