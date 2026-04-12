@@ -53,7 +53,7 @@ export function buildTreeLayout(
     if (!personToCouple.has(b)) personToCouple.set(b, coupleId);
   }
 
-  // Build personById early so it can be used for sorting
+  // Build personById early
   const personById = new Map(persons.map((p) => [p.id, p]));
 
   // Add only PERSON nodes to dagre
@@ -61,7 +61,7 @@ export function buildTreeLayout(
     g.setNode(p.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
   }
 
-  // Add person→child edges sorted by urutan_lahir so dagre places siblings in order
+  // Add person→child edges sorted by urutan_lahir
   const parentEdges = relationships.filter(
     (r) =>
       r.tipe === "AYAH_KANDUNG" ||
@@ -100,7 +100,52 @@ export function buildTreeLayout(
     }
   }
 
-  // Group in-tree persons by Y level, sorted by X
+  // Build child → all parents map (early, needed for sorting)
+  const childParentsMap = new Map<string, string[]>();
+  for (const rel of relationships) {
+    if (
+      rel.tipe !== "AYAH_KANDUNG" &&
+      rel.tipe !== "IBU_KANDUNG" &&
+      rel.tipe !== "AYAH_TIRI" &&
+      rel.tipe !== "IBU_TIRI"
+    ) continue;
+    if (!childParentsMap.has(rel.person_id)) childParentsMap.set(rel.person_id, []);
+    childParentsMap.get(rel.person_id)!.push(rel.related_id);
+  }
+
+  // Build couple lookup by member pair (early, needed for sorting)
+  const couplePairLookup = new Map<string, string>();
+  for (const [coupleId, { a, b }] of coupleMap) {
+    couplePairLookup.set(`${a}_${b}`, coupleId);
+    couplePairLookup.set(`${b}_${a}`, coupleId);
+  }
+
+  // Build child → parent couple map for grouping siblings
+  const childToParentCouple = new Map<string, string>();
+  for (const [childId, parents] of childParentsMap) {
+    let found = false;
+    for (let i = 0; i < parents.length && !found; i++) {
+      for (let j = i + 1; j < parents.length && !found; j++) {
+        const cId = couplePairLookup.get(`${parents[i]}_${parents[j]}`);
+        if (cId) { childToParentCouple.set(childId, cId); found = true; }
+      }
+    }
+    if (!found && parents.length >= 1) {
+      const cId = personToCouple.get(parents[0]);
+      if (cId) childToParentCouple.set(childId, cId);
+    }
+  }
+
+  // Get couple's approximate X from its members' dagre positions
+  const coupleApproxX = (coupleId: string): number => {
+    const c = coupleMap.get(coupleId);
+    if (!c) return 0;
+    const xa = personPos.get(c.a)?.x ?? 0;
+    const xb = personPos.get(c.b)?.x ?? 0;
+    return (xa + xb) / 2;
+  };
+
+  // Group in-tree persons by Y level
   const SPACING = NODE_WIDTH + 80;
   const levelGroups = new Map<number, string[]>();
   for (const p of persons) {
@@ -111,14 +156,19 @@ export function buildTreeLayout(
     if (!levelGroups.has(y)) levelGroups.set(y, []);
     levelGroups.get(y)!.push(p.id);
   }
+
+  // Sort each level group: by parent couple X position, then by birth order within couple
   for (const ids of levelGroups.values()) {
     ids.sort((a, b) => {
+      const coupleA = childToParentCouple.get(a);
+      const coupleB = childToParentCouple.get(b);
+      const cxA = coupleA ? coupleApproxX(coupleA) : (personPos.get(a)?.x ?? 0);
+      const cxB = coupleB ? coupleApproxX(coupleB) : (personPos.get(b)?.x ?? 0);
+      if (Math.abs(cxA - cxB) > 1) return cxA - cxB;
+      // Same couple: sort by birth order
       const ua = personById.get(a)?.urutan_lahir;
       const ub = personById.get(b)?.urutan_lahir;
-      // If both have urutan_lahir, sort by it; otherwise fall back to dagre X
       if (ua != null && ub != null) return ua - ub;
-      if (ua != null) return -1;
-      if (ub != null) return 1;
       return (personPos.get(a)?.x ?? 0) - (personPos.get(b)?.x ?? 0);
     });
   }
@@ -152,7 +202,7 @@ export function buildTreeLayout(
       // First menantu goes LEFT (before spouse)
       group.splice(spouseIdx, 0, menantus[0]);
       personPos.set(menantus[0], { x: 0, y: spousePos.y });
-      spouseIdx += 1; // spouse shifted right
+      spouseIdx += 1;
       // Remaining menantus go RIGHT (after spouse)
       for (let i = 1; i < menantus.length; i++) {
         group.splice(spouseIdx + i, 0, menantus[i]);
@@ -190,14 +240,13 @@ export function buildTreeLayout(
     });
   }
 
-  // Couple nodes: midpoint between spouses, force same Y for perfectly horizontal lines
+  // Couple nodes: midpoint between spouses, force same Y for horizontal lines
   const couplePos = new Map<string, { x: number; y: number }>();
   for (const [coupleId, { a, b }] of coupleMap) {
     const posA = personPos.get(a);
     const posB = personPos.get(b);
     if (!posA || !posB) continue;
 
-    // Force both spouses to share the same Y (average), so lines are perfectly horizontal
     const sharedY = (posA.y + posB.y) / 2;
     personPos.set(a, { x: posA.x, y: sharedY });
     personPos.set(b, { x: posB.x, y: sharedY });
@@ -230,7 +279,6 @@ export function buildTreeLayout(
       ? { strokeDasharray: "6,3", stroke: "#f97316" }
       : { stroke: "#94a3b8" };
 
-    // Person A → couple dot
     edges.push({
       id: `${a}-${coupleId}`,
       source: a,
@@ -241,7 +289,6 @@ export function buildTreeLayout(
       style: edgeStyle,
     });
 
-    // Person B → couple dot
     edges.push({
       id: `${b}-${coupleId}`,
       source: b,
@@ -251,26 +298,6 @@ export function buildTreeLayout(
       type: "straight",
       style: edgeStyle,
     });
-  }
-
-  // Build couple lookup by member pair: "idA_idB" → coupleId
-  const couplePairLookup = new Map<string, string>();
-  for (const [coupleId, { a, b }] of coupleMap) {
-    couplePairLookup.set(`${a}_${b}`, coupleId);
-    couplePairLookup.set(`${b}_${a}`, coupleId);
-  }
-
-  // Build child → all parents map
-  const childParentsMap = new Map<string, string[]>();
-  for (const rel of relationships) {
-    if (
-      rel.tipe !== "AYAH_KANDUNG" &&
-      rel.tipe !== "IBU_KANDUNG" &&
-      rel.tipe !== "AYAH_TIRI" &&
-      rel.tipe !== "IBU_TIRI"
-    ) continue;
-    if (!childParentsMap.has(rel.person_id)) childParentsMap.set(rel.person_id, []);
-    childParentsMap.get(rel.person_id)!.push(rel.related_id);
   }
 
   // Parent→child edges
@@ -287,7 +314,6 @@ export function buildTreeLayout(
     const parentId = rel.related_id;
     const childId = rel.person_id;
 
-    // Find the correct couple using this parent + the child's other parent
     const allParents = childParentsMap.get(childId) ?? [];
     const otherParents = allParents.filter((p) => p !== parentId);
     let sourceId: string = parentId;
@@ -295,7 +321,6 @@ export function buildTreeLayout(
       const cId = couplePairLookup.get(`${parentId}_${otherId}`);
       if (cId && couplePos.has(cId)) { sourceId = cId; break; }
     }
-    // Fallback: use this parent's couple if available
     if (sourceId === parentId) {
       const cId = personToCouple.get(parentId);
       if (cId && couplePos.has(cId)) sourceId = cId;
