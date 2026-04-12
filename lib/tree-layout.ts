@@ -123,6 +123,8 @@ export function buildTreeLayout(
 
   // Build child → parent couple map for grouping siblings
   const childToParentCouple = new Map<string, string>();
+  // For children whose parents share no couple in the data, store avg parent X directly
+  const childSingleParentX = new Map<string, number>();
   for (const [childId, parents] of childParentsMap) {
     let found = false;
     for (let i = 0; i < parents.length && !found; i++) {
@@ -132,8 +134,12 @@ export function buildTreeLayout(
       }
     }
     if (!found && parents.length >= 1) {
-      const cId = personToCouple.get(parents[0]);
-      if (cId) childToParentCouple.set(childId, cId);
+      // Don't fall back to personToCouple (first couple may belong to a different marriage).
+      // Instead use the average dagre X of the known parents so the child sorts near them.
+      const avgX =
+        parents.reduce((sum, pid) => sum + (personPos.get(pid)?.x ?? 0), 0) /
+        parents.length;
+      childSingleParentX.set(childId, avgX);
     }
   }
 
@@ -163,25 +169,13 @@ export function buildTreeLayout(
     levelGroups.get(y)!.push(p.id);
   }
 
-  // DEBUG: log couple approx X values
-  console.log("[tree-layout DEBUG] coupleApproxX per couple:");
-  for (const [coupleId, { a, b }] of coupleMap) {
-    const cx = coupleApproxX(coupleId);
-    console.log(`  ${coupleId}: a=${personById.get(a)?.nama_panggilan ?? a}(inTree=${hasParent.has(a)},x=${personPos.get(a)?.x?.toFixed(0)}) b=${personById.get(b)?.nama_panggilan ?? b}(inTree=${hasParent.has(b)},x=${personPos.get(b)?.x?.toFixed(0)}) => approxX=${cx.toFixed(0)}`);
-  }
-  console.log("[tree-layout DEBUG] childToParentCouple:");
-  for (const [childId, coupleId] of childToParentCouple) {
-    console.log(`  child=${personById.get(childId)?.nama_panggilan ?? childId} => couple=${coupleId} approxX=${coupleApproxX(coupleId).toFixed(0)}`);
-  }
-
   // Sort each level group: by parent couple X position, then by birth order within couple
   for (const ids of levelGroups.values()) {
-    const before = [...ids].map(id => personById.get(id)?.nama_panggilan ?? id);
     ids.sort((a, b) => {
       const coupleA = childToParentCouple.get(a);
       const coupleB = childToParentCouple.get(b);
-      const cxA = coupleA ? coupleApproxX(coupleA) : (personPos.get(a)?.x ?? 0);
-      const cxB = coupleB ? coupleApproxX(coupleB) : (personPos.get(b)?.x ?? 0);
+      const cxA = coupleA ? coupleApproxX(coupleA) : (childSingleParentX.get(a) ?? personPos.get(a)?.x ?? 0);
+      const cxB = coupleB ? coupleApproxX(coupleB) : (childSingleParentX.get(b) ?? personPos.get(b)?.x ?? 0);
       if (Math.abs(cxA - cxB) > 1) return cxA - cxB;
       // Same couple: sort by birth order
       const ua = personById.get(a)?.urutan_lahir;
@@ -193,8 +187,6 @@ export function buildTreeLayout(
       if (Math.abs(dxDiff) > 1) return dxDiff;
       return a < b ? -1 : 1; // stable tiebreaker by id
     });
-    const after = ids.map(id => personById.get(id)?.nama_panggilan ?? id);
-    console.log(`[tree-layout DEBUG] level group: before=${JSON.stringify(before)} after=${JSON.stringify(after)}`);
   }
 
   // Collect menantus per in-tree spouse
