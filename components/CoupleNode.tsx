@@ -17,7 +17,7 @@ export default function CoupleNode({ data }: NodeProps) {
       <Handle type="target" id="left" position={Position.Left} style={{ visibility: "hidden" }} />
       <Handle type="target" id="right" position={Position.Right} style={{ visibility: "hidden" }} />
       <span className={`text-sm leading-none select-none ${heartColor}`}>♥</span>
-      <Handle type="source" position={Position.Bottom} style={{ visibility: "hidden" }} />
+      <Handle type="source" id="bottom" position={Position.Bottom} style={{ visibility: "hidden" }} />
     </div>
   );
 }
