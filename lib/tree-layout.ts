@@ -304,10 +304,12 @@ export function buildTreeLayout(
       (r) => r.tipe === "AYAH_TIRI" || r.tipe === "IBU_TIRI"
     );
 
+    const isFromCouple = couplePos.has(sourceId);
     edges.push({
       id: edgeId,
       source: sourceId,
       target: childId,
+      sourceHandle: isFromCouple ? "bottom" : undefined,
       type: "smoothstep",
       style: isStep
         ? { strokeDasharray: "5,5", stroke: "#94a3b8" }
