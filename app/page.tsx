@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const [personsRaw, relationshipsRaw, marriagesRaw] = await Promise.all([
     prisma.person.findMany({ orderBy: { created_at: "asc" } }),
-    prisma.relationship.findMany(),
+    prisma.relationship.findMany({ orderBy: { id: "asc" } }),
     prisma.marriage.findMany({ orderBy: { urutan: "asc" } }),
   ]);
 

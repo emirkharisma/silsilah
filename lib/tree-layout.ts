@@ -72,7 +72,8 @@ export function buildTreeLayout(
   parentEdges.sort((a, b) => {
     const ua = personById.get(a.person_id)?.urutan_lahir ?? 999;
     const ub = personById.get(b.person_id)?.urutan_lahir ?? 999;
-    return ua - ub;
+    if (ua !== ub) return ua - ub;
+    return a.person_id < b.person_id ? -1 : 1; // stable tiebreaker
   });
   for (const rel of parentEdges) {
     g.setEdge(rel.related_id, rel.person_id);
@@ -173,8 +174,12 @@ export function buildTreeLayout(
       // Same couple: sort by birth order
       const ua = personById.get(a)?.urutan_lahir;
       const ub = personById.get(b)?.urutan_lahir;
-      if (ua != null && ub != null) return ua - ub;
-      return (personPos.get(a)?.x ?? 0) - (personPos.get(b)?.x ?? 0);
+      if (ua != null && ub != null && ua !== ub) return ua - ub;
+      if (ua != null && ub == null) return -1;
+      if (ub != null && ua == null) return 1;
+      const dxDiff = (personPos.get(a)?.x ?? 0) - (personPos.get(b)?.x ?? 0);
+      if (Math.abs(dxDiff) > 1) return dxDiff;
+      return a < b ? -1 : 1; // stable tiebreaker by id
     });
   }
 
