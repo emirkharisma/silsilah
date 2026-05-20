@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { signOut } from "next-auth/react";
 import { Person, Relationship, Marriage, JenisKelamin, StatusPernikahan } from "@prisma/client";
 
@@ -38,6 +38,9 @@ const emptyForm = (): FormState => ({
   status_nikah: "AKTIF",
 });
 
+type FilterGender = "ALL" | "LAKI_LAKI" | "PEREMPUAN";
+type FilterStatus = "ALL" | "ALIVE" | "DECEASED";
+
 export default function AdminPanel({ initialPersons, initialRelationships, initialMarriages }: AdminPanelProps) {
   const [persons, setPersons] = useState(initialPersons);
   const [relationships, setRelationships] = useState(initialRelationships);
@@ -48,6 +51,11 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
   const [panelOpen, setPanelOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [filterGender, setFilterGender] = useState<FilterGender>("ALL");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("ALL");
 
   // ── helpers ──────────────────────────────────────────────────────────
   const getName = (id: string) => {
@@ -69,6 +77,26 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
     if (!m) return "";
     return m.person_a_id === personId ? m.person_b_id : m.person_a_id;
   };
+
+  // ── filtered list ─────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return persons.filter((p) => {
+      if (q && !p.nama_lengkap.toLowerCase().includes(q) && !(p.nama_panggilan?.toLowerCase().includes(q))) return false;
+      if (filterGender !== "ALL" && p.jenis_kelamin !== filterGender) return false;
+      if (filterStatus === "ALIVE" && p.is_deceased) return false;
+      if (filterStatus === "DECEASED" && !p.is_deceased) return false;
+      return true;
+    });
+  }, [persons, search, filterGender, filterStatus]);
+
+  // ── stats ─────────────────────────────────────────────────────────────
+  const stats = useMemo(() => ({
+    total: persons.length,
+    laki: persons.filter((p) => p.jenis_kelamin === "LAKI_LAKI").length,
+    perempuan: persons.filter((p) => p.jenis_kelamin === "PEREMPUAN").length,
+    almarhum: persons.filter((p) => p.is_deceased).length,
+  }), [persons]);
 
   // ── open panel ───────────────────────────────────────────────────────
   function openNew() {
@@ -141,7 +169,6 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
       const saved: Person = await res.json();
       const personId = saved.id;
 
-      // Parent relationships
       if (editingId) {
         const oldRels = relationships.filter(
           (r) => r.person_id === personId && (r.tipe === "AYAH_KANDUNG" || r.tipe === "IBU_KANDUNG")
@@ -170,7 +197,6 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
         if (r.ok) newRels.push(await r.json());
       }
 
-      // Marriage
       if (editingId) {
         const oldMar = getMarriage(personId);
         if (oldMar) {
@@ -218,85 +244,249 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 sticky top-0 z-20">
-        <a href="/" className="text-slate-400 hover:text-slate-700 text-sm">← Pohon Keluarga</a>
-        <span className="text-slate-300">|</span>
-        <h1 className="font-semibold text-slate-800">Admin Panel</h1>
-        <span className="text-xs text-slate-400">{persons.length} anggota</span>
-        <div className="ml-auto flex items-center gap-3">
+      <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center gap-3 sticky top-0 z-20">
+        <a href="/" className="flex items-center gap-1.5 text-slate-400 hover:text-slate-700 text-sm transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Pohon Keluarga
+        </a>
+        <span className="text-slate-200">|</span>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center">
+            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <h1 className="font-semibold text-slate-800 text-sm">Admin Panel</h1>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
           <button
             onClick={openNew}
-            className="text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            className="flex items-center gap-1.5 text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
           >
-            + Tambah Anggota
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Tambah Anggota
           </button>
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-2 rounded-lg"
+            className="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-2 rounded-lg transition-colors hover:bg-slate-50"
           >
             Logout
           </button>
         </div>
       </header>
 
-      {/* List */}
-      <div className="max-w-3xl mx-auto p-6">
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="divide-y divide-slate-100">
-            {persons.map((p) => {
-              const ayahId = getAyah(p.id);
-              const ibuId = getIbu(p.id);
-              const spouseId = getSpouseId(p.id);
-              const marriage = getMarriage(p.id);
-              return (
-                <div key={p.id} className="px-6 py-4 flex items-start gap-4 hover:bg-slate-50 transition-colors">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${
-                    p.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
-                  }`}>
-                    {p.nama_lengkap[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800">
-                      {p.nama_panggilan ? `${p.nama_panggilan} · ` : ""}
-                      <span className="font-normal">{p.nama_lengkap}</span>
-                      {p.is_deceased && <span className="ml-1 text-slate-400 text-xs">†</span>}
-                    </p>
-                    <div className="flex flex-wrap gap-x-4 mt-0.5">
-                      {(ayahId || ibuId) && (
-                        <p className="text-xs text-slate-400">
-                          Anak dari {[ayahId && getName(ayahId), ibuId && getName(ibuId)].filter(Boolean).join(" & ")}
-                        </p>
-                      )}
-                      {spouseId && (
-                        <p className="text-xs text-slate-400">
-                          {marriage?.status === "CERAI" ? "Mantan pasangan" : "Pasangan"}: {getName(spouseId)}
-                          {marriage?.status === "MENINGGAL" && " †"}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-3 flex-shrink-0 text-xs pt-0.5">
-                    <button onClick={() => openEdit(p)} className="text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
-                    <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700 font-medium">Hapus</button>
-                  </div>
-                </div>
-              );
-            })}
-            {persons.length === 0 && (
-              <p className="px-6 py-16 text-center text-sm text-slate-400">
-                Belum ada anggota. Klik <strong>+ Tambah Anggota</strong> untuk mulai.
-              </p>
+      <div className="max-w-6xl mx-auto p-6 space-y-5">
+        {/* Stats cards */}
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: "Total Anggota", value: stats.total, color: "bg-indigo-50 text-indigo-700 border-indigo-100" },
+            { label: "Laki-laki", value: stats.laki, color: "bg-blue-50 text-blue-700 border-blue-100" },
+            { label: "Perempuan", value: stats.perempuan, color: "bg-pink-50 text-pink-700 border-pink-100" },
+            { label: "Almarhum/ah", value: stats.almarhum, color: "bg-slate-50 text-slate-600 border-slate-200" },
+          ].map((s) => (
+            <div key={s.label} className={`rounded-xl border px-4 py-3 ${s.color}`}>
+              <p className="text-2xl font-bold">{s.value}</p>
+              <p className="text-xs font-medium opacity-75 mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Search & filter bar */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <svg className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Cari nama anggota..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             )}
           </div>
+
+          {/* Gender filter */}
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
+            {(["ALL", "LAKI_LAKI", "PEREMPUAN"] as FilterGender[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setFilterGender(v)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  filterGender === v ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {v === "ALL" ? "Semua" : v === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
+              </button>
+            ))}
+          </div>
+
+          {/* Status filter */}
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
+            {(["ALL", "ALIVE", "DECEASED"] as FilterStatus[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setFilterStatus(v)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  filterStatus === v ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {v === "ALL" ? "Semua" : v === "ALIVE" ? "Masih hidup" : "Almarhum"}
+              </button>
+            ))}
+          </div>
+
+          <span className="text-xs text-slate-400 ml-auto">
+            {filtered.length} dari {persons.length} anggota
+          </span>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-10">#</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nama</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kelamin</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Orang Tua</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Pasangan</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                <th className="px-4 py-3 w-24"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map((p, i) => {
+                const ayahId = getAyah(p.id);
+                const ibuId = getIbu(p.id);
+                const spouseId = getSpouseId(p.id);
+                const marriage = getMarriage(p.id);
+                const isMale = p.jenis_kelamin === "LAKI_LAKI";
+                return (
+                  <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
+                    {/* Index */}
+                    <td className="px-4 py-3 text-slate-400 text-xs">{i + 1}</td>
+
+                    {/* Name */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        {p.foto_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.foto_url} alt={p.nama_lengkap} className={`w-8 h-8 rounded-full object-cover flex-shrink-0 ${p.is_deceased ? "grayscale opacity-60" : ""}`} />
+                        ) : (
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${isMale ? "bg-blue-50 text-blue-600" : "bg-pink-50 text-pink-600"}`}>
+                            {p.nama_lengkap[0]}
+                          </div>
+                        )}
+                        <div>
+                          <p className={`font-medium leading-tight ${p.is_deceased ? "text-slate-400" : "text-slate-800"}`}>
+                            {p.nama_panggilan || p.nama_lengkap.split(" ")[0]}
+                            {p.is_deceased && <span className="ml-1 text-slate-400">†</span>}
+                          </p>
+                          <p className="text-xs text-slate-400 leading-tight">{p.nama_lengkap}</p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Gender */}
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isMale ? "bg-blue-50 text-blue-600" : "bg-pink-50 text-pink-600"}`}>
+                        {isMale ? "Laki-laki" : "Perempuan"}
+                      </span>
+                    </td>
+
+                    {/* Parents */}
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {ayahId || ibuId
+                        ? [ayahId && getName(ayahId), ibuId && getName(ibuId)].filter(Boolean).join(" & ")
+                        : <span className="text-slate-300">–</span>}
+                    </td>
+
+                    {/* Spouse */}
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {spouseId ? (
+                        <span>
+                          {getName(spouseId)}
+                          {marriage?.status === "CERAI" && <span className="ml-1 text-orange-400">(cerai)</span>}
+                          {marriage?.status === "MENINGGAL" && <span className="ml-1 text-slate-400">†</span>}
+                        </span>
+                      ) : <span className="text-slate-300">–</span>}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-4 py-3">
+                      {p.is_deceased
+                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Almarhum/ah</span>
+                        : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">Masih hidup</span>}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => openEdit(p)}
+                          title="Edit"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          title="Hapus"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {filtered.length === 0 && (
+            <div className="py-16 text-center">
+              <svg className="w-10 h-10 text-slate-200 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <p className="text-sm text-slate-400">
+                {search || filterGender !== "ALL" || filterStatus !== "ALL"
+                  ? "Tidak ada anggota yang cocok dengan filter."
+                  : "Belum ada anggota. Klik + Tambah Anggota untuk mulai."}
+              </p>
+              {(search || filterGender !== "ALL" || filterStatus !== "ALL") && (
+                <button
+                  onClick={() => { setSearch(""); setFilterGender("ALL"); setFilterStatus("ALL"); }}
+                  className="mt-2 text-xs text-indigo-600 hover:underline"
+                >
+                  Reset filter
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Overlay */}
       {panelOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-30"
-          onClick={closePanel}
-        />
+        <div className="fixed inset-0 bg-black/20 z-30 backdrop-blur-[1px]" onClick={closePanel} />
       )}
 
       {/* Side panel */}
@@ -304,11 +494,18 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
         panelOpen ? "translate-x-0" : "translate-x-full"
       }`}>
         {/* Panel header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
           <h2 className="font-semibold text-slate-800">
             {editingId ? "Edit Anggota" : "Tambah Anggota"}
           </h2>
-          <button onClick={closePanel} className="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
+          <button
+            onClick={closePanel}
+            className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Panel body */}
@@ -316,7 +513,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
           {/* Photo */}
           <div className="flex items-center gap-4">
             <div className={`w-16 h-16 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-xl font-semibold ${
-              form.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-600" : "bg-pink-100 text-pink-600"
+              form.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-50 text-blue-600" : "bg-pink-50 text-pink-600"
             }`}>
               {form.foto_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -343,7 +540,6 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             </div>
           </div>
 
-          {/* Basic */}
           <div>
             <label className="label">Nama Lengkap *</label>
             <input className="input" placeholder="Ahmad Sulaiman"
@@ -364,7 +560,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
               </select>
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
             <input type="checkbox" checked={form.is_deceased}
               onChange={(e) => set("is_deceased", e.target.checked)}
               className="rounded border-slate-300" />
@@ -376,7 +572,6 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
               value={form.catatan} onChange={(e) => set("catatan", e.target.value)} />
           </div>
 
-          {/* Parents */}
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Orang Tua</p>
             <div className="space-y-3">
@@ -414,7 +609,6 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             )}
           </div>
 
-          {/* Marriage */}
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Pernikahan</p>
             <div className="space-y-3">
@@ -455,7 +649,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             {saving ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Tambah Anggota"}
           </button>
           <button onClick={closePanel}
-            className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+            className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
             Batal
           </button>
         </div>
