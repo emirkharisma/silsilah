@@ -21,7 +21,11 @@ import FamilyEdge from "./FamilyEdge";
 import { buildTreeLayout, PersonData, RelationshipData, MarriageData } from "@/lib/tree-layout";
 
 // Centers the viewport on the selected person node whenever selection changes.
-// Must be rendered inside <ReactFlow> to access useReactFlow().
+// On desktop (md+) the right sidebar is 320px wide, so we shift the target
+// left by half that width (in flow coords) so the node lands in the middle
+// of the remaining canvas area.
+const SIDEBAR_W = 320; // matches w-80 in TreePage
+
 function AutoCenter({ selectedPersonId, nodes }: { selectedPersonId?: string; nodes: Node[] }) {
   const { setCenter, getZoom } = useReactFlow();
 
@@ -29,10 +33,19 @@ function AutoCenter({ selectedPersonId, nodes }: { selectedPersonId?: string; no
     if (!selectedPersonId) return;
     const node = nodes.find((n) => n.id === selectedPersonId);
     if (!node) return;
+
+    const zoom = Math.max(getZoom(), 0.8);
     // PersonNode is w-44 (176px) wide; height ~88px
-    const cx = node.position.x + 88;
+    let cx = node.position.x + 88;
     const cy = node.position.y + 44;
-    setCenter(cx, cy, { zoom: Math.max(getZoom(), 0.8), duration: 500 });
+
+    // On desktop the sidebar covers the right 320px — shift target left so
+    // the node ends up centred in the visible canvas, not the full viewport.
+    if (typeof window !== "undefined" && window.innerWidth >= 768) {
+      cx -= SIDEBAR_W / 2 / zoom;
+    }
+
+    setCenter(cx, cy, { zoom, duration: 500 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPersonId]);
 
