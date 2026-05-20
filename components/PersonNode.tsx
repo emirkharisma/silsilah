@@ -21,7 +21,7 @@ export default function PersonNode({ data, selected }: NodeProps) {
         group w-44 rounded-2xl border bg-white
         transition-all duration-150 cursor-pointer
         ${selected
-          ? "border-indigo-400 shadow-lg shadow-indigo-100 ring-2 ring-indigo-200 scale-[1.02]"
+          ? "border-indigo-400 shadow-lg shadow-indigo-100 ring-2 ring-indigo-300 scale-[1.03]"
           : "border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 hover:scale-[1.02]"
         }
         ${person.is_deceased ? "border-dashed" : ""}

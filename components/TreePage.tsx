@@ -19,6 +19,46 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
 
+  // Compute the set of node IDs that should stay fully visible when a person is selected.
+  // Includes: the person themselves, their spouse(s), their children, their parents,
+  // and the couple-dot nodes that connect those relationships.
+  const highlightSet = useMemo((): Set<string> | null => {
+    if (!selectedPerson) return null;
+    const id = selectedPerson.id;
+    const ids = new Set<string>([id]);
+
+    // Spouse(s) + couple node
+    for (const m of marriages) {
+      if (m.person_a_id === id || m.person_b_id === id) {
+        ids.add(m.person_a_id === id ? m.person_b_id : m.person_a_id);
+        ids.add(`couple-${m.id}`);
+      }
+    }
+
+    // Children (selected person is the parent in the relationship)
+    for (const r of relationships) {
+      if (r.related_id === id) ids.add(r.person_id);
+    }
+
+    // Parents (selected person is the child in the relationship)
+    const parentIds = new Set<string>();
+    for (const r of relationships) {
+      if (r.person_id === id) {
+        ids.add(r.related_id);
+        parentIds.add(r.related_id);
+      }
+    }
+
+    // Parent couple node(s)
+    for (const m of marriages) {
+      if (parentIds.has(m.person_a_id) || parentIds.has(m.person_b_id)) {
+        ids.add(`couple-${m.id}`);
+      }
+    }
+
+    return ids;
+  }, [selectedPerson, marriages, relationships]);
+
   const searchResults = useMemo(() => {
     if (!deferredSearch.trim()) return [];
     const q = deferredSearch.toLowerCase();
@@ -110,6 +150,8 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
           relationships={relationships}
           marriages={marriages}
           onPersonSelect={handlePersonSelect}
+          selectedPersonId={selectedPerson?.id}
+          highlightSet={highlightSet}
         />
 
         {/* Slide-in detail panel */}

@@ -33,6 +33,8 @@ interface TreeViewProps {
   relationships: RelationshipData[];
   marriages: MarriageData[];
   onPersonSelect: (person: PersonData | null) => void;
+  selectedPersonId?: string;
+  highlightSet?: Set<string> | null;
 }
 
 export default function TreeView({
@@ -40,6 +42,8 @@ export default function TreeView({
   relationships,
   marriages,
   onPersonSelect,
+  selectedPersonId,
+  highlightSet,
 }: TreeViewProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
     () => buildTreeLayout(persons, relationships, marriages),
@@ -48,6 +52,37 @@ export default function TreeView({
 
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+
+  // Apply highlight/dim styling based on current selection
+  const styledNodes = useMemo(() => {
+    if (!highlightSet) return nodes;
+    return nodes.map((n) => {
+      const active = highlightSet.has(n.id);
+      return {
+        ...n,
+        selected: n.id === selectedPersonId,
+        style: {
+          opacity: active ? 1 : 0.12,
+          transition: "opacity 0.2s ease",
+        },
+      };
+    });
+  }, [nodes, highlightSet, selectedPersonId]);
+
+  const styledEdges = useMemo(() => {
+    if (!highlightSet) return edges;
+    return edges.map((e) => {
+      const active = highlightSet.has(e.source) && highlightSet.has(e.target);
+      return {
+        ...e,
+        style: {
+          ...e.style,
+          opacity: active ? 1 : 0.06,
+          transition: "opacity 0.2s ease",
+        },
+      };
+    });
+  }, [edges, highlightSet]);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
@@ -68,8 +103,8 @@ export default function TreeView({
     <div className="w-full h-full">
       <style>{`.react-flow__handle { opacity: 0 !important; background: transparent !important; border-color: transparent !important; }`}</style>
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={styledNodes}
+        edges={styledEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
