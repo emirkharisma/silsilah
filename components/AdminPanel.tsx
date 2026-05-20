@@ -175,6 +175,30 @@ function PersonPicker({ value, onChange, options, placeholder }: PersonPickerPro
   );
 }
 
+// ── Small chip for relation display inside view modal ─────────────────────────
+type ChipColor = "blue" | "pink" | "rose" | "orange" | "emerald" | "amber";
+function RelChip({ id, persons, label, color = "slate" }: { id: string; persons: Person[]; label?: string; color?: ChipColor | "slate" }) {
+  const p = persons.find((x) => x.id === id);
+  if (!p) return null;
+  const isMale = p.jenis_kelamin === "LAKI_LAKI";
+  const initials = p.nama_lengkap.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  const avatarCls = isMale ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700";
+  const labelCls: Record<ChipColor | "slate", string> = {
+    blue: "bg-blue-50 text-blue-600", pink: "bg-pink-50 text-pink-600",
+    rose: "bg-rose-50 text-rose-600", orange: "bg-orange-50 text-orange-500",
+    emerald: "bg-emerald-50 text-emerald-600", amber: "bg-amber-50 text-amber-600",
+    slate: "bg-slate-100 text-slate-600",
+  };
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold flex-shrink-0 ${avatarCls}`}>{initials}</div>
+      <span className="text-sm text-slate-700 font-medium truncate">{p.nama_panggilan || p.nama_lengkap.split(" ")[0]}</span>
+      <span className="text-xs text-slate-400 truncate hidden sm:block">{p.nama_lengkap}</span>
+      {label && <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${labelCls[color]}`}>{label}</span>}
+    </div>
+  );
+}
+
 interface AdminPanelProps {
   initialPersons: Person[];
   initialRelationships: Relationship[];
@@ -209,6 +233,9 @@ const emptyForm = (): FormState => ({
   status_nikah: "AKTIF",
 });
 
+type RelativeType = "ayah" | "ibu" | "pasangan" | "saudara" | "anak";
+type RelativeContext = { type: RelativeType; forPersonId: string };
+
 type FilterGender = "ALL" | "LAKI_LAKI" | "PEREMPUAN";
 type FilterStatus = "ALL" | "ALIVE" | "DECEASED";
 
@@ -219,9 +246,17 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
 
   const [form, setForm] = useState<FormState>(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [relativeContext, setRelativeContext] = useState<RelativeContext | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // View modal
+  const [viewPersonId, setViewPersonId] = useState<string | null>(null);
+
+  // Dropdown per row
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
+  const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -269,9 +304,22 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
     almarhum: persons.filter((p) => p.is_deceased).length,
   }), [persons]);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!activeDropdownId) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownContainerRef.current && !dropdownContainerRef.current.contains(e.target as Node)) {
+        setActiveDropdownId(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [activeDropdownId]);
+
   // ── open panel ───────────────────────────────────────────────────────
   function openNew() {
     setEditingId(null);
+    setRelativeContext(null);
     setForm(emptyForm());
     setPanelOpen(true);
   }
@@ -294,6 +342,51 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
     setPanelOpen(true);
   }
 
+  function openAddRelative(type: RelativeType, forPerson: Person) {
+    setEditingId(null);
+    setRelativeContext({ type, forPersonId: forPerson.id });
+    const f = emptyForm();
+    switch (type) {
+      case "anak":
+        if (forPerson.jenis_kelamin === "LAKI_LAKI") f.ayah_id = forPerson.id;
+        else f.ibu_id = forPerson.id;
+        break;
+      case "pasangan":
+        f.pasangan_id = forPerson.id;
+        f.jenis_kelamin = forPerson.jenis_kelamin === "LAKI_LAKI" ? "PEREMPUAN" : "LAKI_LAKI";
+        break;
+      case "saudara":
+        f.ayah_id = getAyah(forPerson.id);
+        f.ibu_id = getIbu(forPerson.id);
+        break;
+      case "ayah":
+        f.jenis_kelamin = "LAKI_LAKI";
+        break;
+      case "ibu":
+        f.jenis_kelamin = "PEREMPUAN";
+        break;
+    }
+    setForm(f);
+    setActiveDropdownId(null);
+    setPanelOpen(true);
+  }
+
+  function getPanelTitle() {
+    if (relativeContext) {
+      const fp = persons.find((x) => x.id === relativeContext.forPersonId);
+      const name = fp ? (fp.nama_panggilan || fp.nama_lengkap.split(" ")[0]) : "";
+      const labels: Record<RelativeType, string> = {
+        ayah: `Tambah Ayah untuk ${name}`,
+        ibu: `Tambah Ibu untuk ${name}`,
+        pasangan: `Tambah Pasangan untuk ${name}`,
+        saudara: `Tambah Saudara untuk ${name}`,
+        anak: `Tambah Anak untuk ${name}`,
+      };
+      return labels[relativeContext.type];
+    }
+    return editingId ? "Edit Anggota" : "Tambah Anggota";
+  }
+
   async function handlePhotoUpload(file: File) {
     setUploading(true);
     try {
@@ -313,6 +406,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
   function closePanel() {
     setPanelOpen(false);
     setEditingId(null);
+    setRelativeContext(null);
     setForm(emptyForm());
   }
 
@@ -383,6 +477,17 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
           body: JSON.stringify({ person_a_id: personId, person_b_id: form.pasangan_id, status: form.status_nikah }),
         });
         if (r.ok) newMar = await r.json();
+      }
+
+      // Reverse-relationship: new person is the parent OF another person
+      if (!editingId && relativeContext && (relativeContext.type === "ayah" || relativeContext.type === "ibu")) {
+        const tipe = relativeContext.type === "ayah" ? "AYAH_KANDUNG" : "IBU_KANDUNG";
+        const r = await fetch("/api/relationships", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ person_id: relativeContext.forPersonId, related_id: personId, tipe }),
+        });
+        if (r.ok) newRels.push(await r.json());
       }
 
       setPersons((prev) => editingId ? prev.map((p) => (p.id === saved.id ? saved : p)) : [...prev, saved]);
@@ -535,7 +640,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Orang Tua</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Pasangan</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                <th className="px-4 py-3 w-24"></th>
+                <th className="px-4 py-3 w-36"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -605,7 +710,50 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
 
                     {/* Actions */}
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div ref={dropdownContainerRef} className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* View */}
+                        <button
+                          onClick={() => setViewPersonId(p.id)}
+                          title="Lihat"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                        {/* Add relative dropdown */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setActiveDropdownId(activeDropdownId === p.id ? null : p.id)}
+                            title="Tambah Kerabat"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                            </svg>
+                          </button>
+                          {activeDropdownId === p.id && (
+                            <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 min-w-[168px] overflow-hidden">
+                              {([
+                                { type: "ayah", label: "Tambah Ayah", color: "text-blue-600" },
+                                { type: "ibu", label: "Tambah Ibu", color: "text-pink-600" },
+                                { type: "pasangan", label: "Tambah Pasangan", color: "text-rose-500" },
+                                { type: "saudara", label: "Tambah Saudara", color: "text-amber-600" },
+                                { type: "anak", label: "Tambah Anak", color: "text-emerald-600" },
+                              ] as { type: RelativeType; label: string; color: string }[]).map((item) => (
+                                <button
+                                  key={item.type}
+                                  onClick={() => openAddRelative(item.type, p)}
+                                  className={`w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 transition-colors ${item.color} font-medium`}
+                                >
+                                  {item.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {/* Edit */}
                         <button
                           onClick={() => openEdit(p)}
                           title="Edit"
@@ -615,6 +763,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
+                        {/* Delete */}
                         <button
                           onClick={() => handleDelete(p.id)}
                           title="Hapus"
@@ -655,6 +804,116 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
         </div>
       </div>
 
+      {/* ── View modal ── */}
+      {viewPersonId && (() => {
+        const vp = persons.find((x) => x.id === viewPersonId);
+        if (!vp) return null;
+        const isMaleV = vp.jenis_kelamin === "LAKI_LAKI";
+        const initialsV = vp.nama_lengkap.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+        const ayahIdV = getAyah(vp.id);
+        const ibuIdV = getIbu(vp.id);
+        const spouseIdV = getSpouseId(vp.id);
+        const marriageV = getMarriage(vp.id);
+        const childrenV = relationships
+          .filter((r) => r.related_id === vp.id && (r.tipe === "AYAH_KANDUNG" || r.tipe === "IBU_KANDUNG"))
+          .map((r) => r.person_id);
+        return (
+          <>
+            <div className="fixed inset-0 bg-black/30 z-50 backdrop-blur-[2px]" onClick={() => setViewPersonId(null)} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm pointer-events-auto overflow-hidden">
+                {/* Modal header */}
+                <div className={`px-6 pt-6 pb-5 ${isMaleV ? "bg-blue-50" : "bg-pink-50"}`}>
+                  <div className="flex items-start gap-4">
+                    {vp.foto_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={vp.foto_url} alt={vp.nama_lengkap} className={`w-16 h-16 rounded-full object-cover flex-shrink-0 ${vp.is_deceased ? "grayscale opacity-70" : ""}`} />
+                    ) : (
+                      <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${isMaleV ? "bg-blue-200 text-blue-700" : "bg-pink-200 text-pink-700"}`}>
+                        {initialsV}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-bold text-lg leading-tight ${vp.is_deceased ? "text-slate-500" : "text-slate-800"}`}>
+                        {vp.nama_panggilan || vp.nama_lengkap.split(" ")[0]}
+                        {vp.is_deceased && <span className="ml-1.5 text-slate-400 font-normal text-sm">†</span>}
+                      </p>
+                      <p className="text-sm text-slate-500 truncate">{vp.nama_lengkap}</p>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isMaleV ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
+                          {isMaleV ? "Laki-laki" : "Perempuan"}
+                        </span>
+                        {vp.urutan_lahir && (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Anak ke-{vp.urutan_lahir}</span>
+                        )}
+                        {vp.is_deceased && (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">Almarhum/ah</span>
+                        )}
+                      </div>
+                    </div>
+                    <button onClick={() => setViewPersonId(null)} className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-white/80 transition-colors flex-shrink-0">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  {vp.catatan && <p className="mt-3 text-xs text-slate-500 leading-relaxed">{vp.catatan}</p>}
+                </div>
+
+                {/* Relations */}
+                <div className="px-6 py-4 space-y-3">
+                  {/* Parents */}
+                  {(ayahIdV || ibuIdV) && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Orang Tua</p>
+                      <div className="flex flex-col gap-1">
+                        {ayahIdV && <RelChip id={ayahIdV} persons={persons} label="Ayah" color="blue" />}
+                        {ibuIdV && <RelChip id={ibuIdV} persons={persons} label="Ibu" color="pink" />}
+                      </div>
+                    </div>
+                  )}
+                  {/* Spouse */}
+                  {spouseIdV && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Pasangan</p>
+                      <RelChip id={spouseIdV} persons={persons} label={
+                        marriageV?.status === "CERAI" ? "Cerai" : marriageV?.status === "MENINGGAL" ? "Wafat" : "Menikah"
+                      } color={marriageV?.status === "CERAI" ? "orange" : "rose"} />
+                    </div>
+                  )}
+                  {/* Children */}
+                  {childrenV.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Anak ({childrenV.length})</p>
+                      <div className="flex flex-col gap-1">
+                        {childrenV.map((cid) => <RelChip key={cid} id={cid} persons={persons} color="emerald" />)}
+                      </div>
+                    </div>
+                  )}
+                  {!ayahIdV && !ibuIdV && !spouseIdV && childrenV.length === 0 && (
+                    <p className="text-sm text-slate-400 text-center py-2">Belum ada relasi tercatat</p>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="px-6 pb-5 flex gap-2">
+                  <button
+                    onClick={() => { setViewPersonId(null); openEdit(vp); }}
+                    className="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setViewPersonId(null)}
+                    className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
       {/* Overlay */}
       {panelOpen && (
         <div className="fixed inset-0 bg-black/20 z-30 backdrop-blur-[1px]" onClick={closePanel} />
@@ -666,8 +925,8 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
       }`}>
         {/* Panel header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
-          <h2 className="font-semibold text-slate-800">
-            {editingId ? "Edit Anggota" : "Tambah Anggota"}
+          <h2 className="font-semibold text-slate-800 text-sm leading-tight">
+            {getPanelTitle()}
           </h2>
           <button
             onClick={closePanel}
@@ -829,7 +1088,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             disabled={saving || !form.nama_lengkap.trim()}
             className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
-            {saving ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Tambah Anggota"}
+            {saving ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Simpan"}
           </button>
           <button onClick={closePanel}
             className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
