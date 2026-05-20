@@ -136,7 +136,9 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
             </p>
             <p className="text-xs text-slate-500 truncate">{person.nama_lengkap}</p>
             {person.is_deceased && (
-              <span className="text-[10px] text-slate-400 italic">almarhum/ah</span>
+              <span className="text-[10px] text-slate-400 italic">
+                {person.jenis_kelamin === "LAKI_LAKI" ? "almarhum" : "almarhumah"}
+              </span>
             )}
           </div>
         </div>
@@ -158,7 +160,7 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
           )}
           {person.is_deceased && (
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
-              Almarhum/ah
+              {person.jenis_kelamin === "LAKI_LAKI" ? "Almarhum" : "Almarhumah"}
             </span>
           )}
         </div>

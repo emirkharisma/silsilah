@@ -664,7 +664,11 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                         <div>
                           <p className={`font-medium leading-tight ${p.is_deceased ? "text-slate-400" : "text-slate-800"}`}>
                             {p.nama_panggilan || p.nama_lengkap.split(" ")[0]}
-                            {p.is_deceased && <span className="ml-1 text-slate-400">†</span>}
+                            {p.is_deceased && (
+                            <svg className="inline w-3 h-3 ml-1 text-slate-400 -translate-y-px" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75 9.75 9.75 0 0 1 8.25 6c0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 2.25 12c0 5.385 4.365 9.75 9.75 9.75 4.93 0 9.022-3.657 9.752-8.998Z" />
+                            </svg>
+                          )}
                           </p>
                           <p className="text-xs text-slate-400 leading-tight">{p.nama_lengkap}</p>
                         </div>
@@ -691,7 +695,11 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                         <span>
                           {getName(spouseId)}
                           {marriage?.status === "CERAI" && <span className="ml-1 text-orange-400">(cerai)</span>}
-                          {marriage?.status === "MENINGGAL" && <span className="ml-1 text-slate-400">†</span>}
+                          {marriage?.status === "MENINGGAL" && (
+                            <svg className="inline w-3 h-3 ml-1 text-slate-400 -translate-y-px" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75 9.75 9.75 0 0 1 8.25 6c0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 2.25 12c0 5.385 4.365 9.75 9.75 9.75 4.93 0 9.022-3.657 9.752-8.998Z" />
+                            </svg>
+                          )}
                         </span>
                       ) : <span className="text-slate-300">–</span>}
                     </td>
@@ -699,7 +707,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                     {/* Status */}
                     <td className="px-4 py-3">
                       {p.is_deceased
-                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Almarhum/ah</span>
+                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">{isMale ? "Almarhum" : "Almarhumah"}</span>
                         : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">Masih hidup</span>}
                     </td>
 
@@ -831,7 +839,11 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                     <div className="flex-1 min-w-0">
                       <p className={`font-bold text-lg leading-tight ${vp.is_deceased ? "text-slate-500" : "text-slate-800"}`}>
                         {vp.nama_panggilan || vp.nama_lengkap.split(" ")[0]}
-                        {vp.is_deceased && <span className="ml-1.5 text-slate-400 font-normal text-sm">†</span>}
+                        {vp.is_deceased && (
+                          <svg className="inline w-3.5 h-3.5 ml-1.5 text-slate-400 -translate-y-px" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75 9.75 9.75 0 0 1 8.25 6c0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 2.25 12c0 5.385 4.365 9.75 9.75 9.75 4.93 0 9.022-3.657 9.752-8.998Z" />
+                          </svg>
+                        )}
                       </p>
                       <p className="text-sm text-slate-500 truncate">{vp.nama_lengkap}</p>
                       <div className="flex flex-wrap gap-1.5 mt-2">
@@ -842,7 +854,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                           <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Anak ke-{vp.urutan_lahir}</span>
                         )}
                         {vp.is_deceased && (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">Almarhum/ah</span>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">{isMaleV ? "Almarhum" : "Almarhumah"}</span>
                         )}
                       </div>
                     </div>

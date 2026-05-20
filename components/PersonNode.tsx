@@ -60,9 +60,11 @@ export default function PersonNode({ data, selected }: NodeProps) {
             {person.nama_lengkap}
           </p>
           {person.is_deceased && (
-            <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-0.5">
-              <span>†</span>
-              <span>Almarhum/ah</span>
+            <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+              <svg className="w-2.5 h-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75 9.75 9.75 0 0 1 8.25 6c0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 2.25 12c0 5.385 4.365 9.75 9.75 9.75 4.93 0 9.022-3.657 9.752-8.998Z" />
+              </svg>
+              <span>{isMale ? "Almarhum" : "Almarhumah"}</span>
             </p>
           )}
         </div>
