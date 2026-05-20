@@ -377,11 +377,75 @@ export function buildTreeLayout(
     }
   }
 
+  // ── Single-child straightening pass ─────────────────────────────────────────
+  // After the bottom-up overlap-resolution step the couple may have been pushed
+  // sideways (beyond its re-centering target) while the single child stayed put.
+  // Fix that by moving the child's ENTIRE SUBTREE to sit directly below the
+  // couple center.  Process couples top-to-bottom so that a shift at one level
+  // is visible when child couples are checked.
+  {
+    // Build parent → [children] map for subtree traversal
+    const personChildrenMap = new Map<string, string[]>();
+    for (const rel of relationships) {
+      if (
+        rel.tipe !== "AYAH_KANDUNG" && rel.tipe !== "IBU_KANDUNG" &&
+        rel.tipe !== "AYAH_TIRI" && rel.tipe !== "IBU_TIRI"
+      ) continue;
+      const pid = rel.related_id;
+      const cid = rel.person_id;
+      if (!personChildrenMap.has(pid)) personChildrenMap.set(pid, []);
+      if (!personChildrenMap.get(pid)!.includes(cid)) personChildrenMap.get(pid)!.push(cid);
+    }
+
+    // Collect a person's entire subtree: descendants + their menantus
+    const collectSubtree = (rootId: string): string[] => {
+      const result = new Set<string>();
+      const queue = [rootId];
+      while (queue.length > 0) {
+        const curr = queue.shift()!;
+        if (result.has(curr)) continue;
+        result.add(curr);
+        for (const m of personMenantus.get(curr) ?? []) result.add(m);
+        for (const ch of personChildrenMap.get(curr) ?? []) queue.push(ch);
+      }
+      return [...result];
+    };
+
+    // Process single-child couples top-to-bottom (shallowest Y first)
+    const singleChildCouples = [...coupleChildrenBU.entries()]
+      .filter(([, children]) => children.length === 1)
+      .map(([coupleId, children]) => {
+        const { a, b } = coupleMap.get(coupleId)!;
+        const y = ((personPos.get(a)?.y ?? 0) + (personPos.get(b)?.y ?? 0)) / 2;
+        return { coupleId, child: children[0], y };
+      })
+      .sort((a, b) => a.y - b.y);
+
+    for (const { coupleId, child: childId } of singleChildCouples) {
+      const { a, b } = coupleMap.get(coupleId)!;
+      const posA = personPos.get(a);
+      const posB = personPos.get(b);
+      const childPos = personPos.get(childId);
+      if (!posA || !posB || !childPos) continue;
+
+      const coupleCenter = (posA.x + posB.x) / 2;
+      const shift = coupleCenter - childPos.x;
+      if (Math.abs(shift) < 1) continue;
+
+      // Move child + entire subtree by the same amount
+      for (const id of collectSubtree(childId)) {
+        const pos = personPos.get(id);
+        if (pos) personPos.set(id, { x: pos.x + shift, y: pos.y });
+      }
+    }
+  }
+
   // ── Final overlap sweep ───────────────────────────────────────────────────
   // The bottom-up pass re-centers couples over their children but may push
   // them into adjacent uncoupled persons (or into already-processed slots).
-  // Do one final left-to-right sweep per level, treating married pairs at
-  // the same level as atomic "clusters" that move together.
+  // The single-child pass above may also have cascaded shifts that create new
+  // overlaps at sibling levels.  Do a final left-to-right sweep per level,
+  // treating married pairs at the same level as atomic "clusters".
   {
     // Collect all positioned persons per rounded Y level
     const sweepLevels = new Map<number, string[]>();
