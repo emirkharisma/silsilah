@@ -19,6 +19,7 @@ export default async function Home() {
     is_deceased: p.is_deceased,
     urutan_lahir: p.urutan_lahir,
     foto_url: p.foto_url,
+    catatan: p.catatan ?? null,
   }));
 
   const relationships: RelationshipData[] = relationshipsRaw.map((r) => ({
