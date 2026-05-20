@@ -256,7 +256,6 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
 
   // Dropdown per row
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
-  const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -304,16 +303,12 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
     almarhum: persons.filter((p) => p.is_deceased).length,
   }), [persons]);
 
-  // Close dropdown on outside click
+  // Close dropdown when clicking anywhere outside
   useEffect(() => {
     if (!activeDropdownId) return;
-    const handler = (e: MouseEvent) => {
-      if (dropdownContainerRef.current && !dropdownContainerRef.current.contains(e.target as Node)) {
-        setActiveDropdownId(null);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const handler = () => setActiveDropdownId(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
   }, [activeDropdownId]);
 
   // ── open panel ───────────────────────────────────────────────────────
@@ -710,7 +705,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
 
                     {/* Actions */}
                     <td className="px-4 py-3">
-                      <div ref={dropdownContainerRef} className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                         {/* View */}
                         <button
                           onClick={() => setViewPersonId(p.id)}
@@ -725,7 +720,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                         {/* Add relative dropdown */}
                         <div className="relative">
                           <button
-                            onClick={() => setActiveDropdownId(activeDropdownId === p.id ? null : p.id)}
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === p.id ? null : p.id); }}
                             title="Tambah Kerabat"
                             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                           >
@@ -744,7 +739,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                               ] as { type: RelativeType; label: string; color: string }[]).map((item) => (
                                 <button
                                   key={item.type}
-                                  onClick={() => openAddRelative(item.type, p)}
+                                  onClick={(e) => { e.stopPropagation(); openAddRelative(item.type, p); }}
                                   className={`w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 transition-colors ${item.color} font-medium`}
                                 >
                                   {item.label}
