@@ -1,8 +1,179 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { Person, Relationship, Marriage, JenisKelamin, StatusPernikahan } from "@prisma/client";
+
+// ── Reusable searchable person picker ────────────────────────────────────────
+interface PersonPickerProps {
+  value: string;
+  onChange: (id: string) => void;
+  options: Person[];
+  placeholder: string;
+}
+
+function PersonPicker({ value, onChange, options, placeholder }: PersonPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const selected = options.find((p) => p.id === value) ?? null;
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return options;
+    return options.filter(
+      (p) =>
+        p.nama_lengkap.toLowerCase().includes(q) ||
+        (p.nama_panggilan?.toLowerCase().includes(q) ?? false)
+    );
+  }, [options, search]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Auto-focus search when opened
+  useEffect(() => {
+    if (open) setTimeout(() => searchRef.current?.focus(), 50);
+  }, [open]);
+
+  const getInitials = (p: Person) =>
+    p.nama_lengkap
+      .split(" ")
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
+
+  return (
+    <div className="relative" ref={containerRef}>
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => { setOpen((v) => !v); setSearch(""); }}
+        className={`
+          w-full flex items-center justify-between gap-2
+          text-sm border rounded-xl px-3 py-2.5 bg-white text-left
+          transition-all duration-150
+          ${open ? "border-indigo-400 ring-2 ring-indigo-100" : "border-slate-200 hover:border-slate-300"}
+        `}
+      >
+        {selected ? (
+          <span className="flex items-center gap-2 min-w-0">
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${
+              selected.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
+            }`}>
+              {getInitials(selected)}
+            </span>
+            <span className="font-medium text-slate-800 truncate">
+              {selected.nama_panggilan || selected.nama_lengkap.split(" ")[0]}
+            </span>
+            <span className="text-slate-400 truncate text-xs hidden sm:block">{selected.nama_lengkap}</span>
+          </span>
+        ) : (
+          <span className="text-slate-400">{placeholder}</span>
+        )}
+        <svg className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+          {/* Search */}
+          <div className="p-2 border-b border-slate-100">
+            <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
+              <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                ref={searchRef}
+                type="text"
+                placeholder="Cari nama..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="text-slate-400 hover:text-slate-600">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Clear option */}
+          <button
+            type="button"
+            onClick={() => { onChange(""); setOpen(false); setSearch(""); }}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm border-b border-slate-50 ${
+              !value ? "bg-indigo-50 text-indigo-700" : "text-slate-400 hover:bg-slate-50"
+            }`}
+          >
+            <span className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] bg-slate-100 text-slate-400 flex-shrink-0">–</span>
+            <span className="text-sm italic">{placeholder}</span>
+            {!value && (
+              <svg className="w-4 h-4 text-indigo-500 flex-shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+
+          {/* Options */}
+          <div className="max-h-48 overflow-y-auto overscroll-contain">
+            {filtered.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-4">Tidak ditemukan</p>
+            ) : (
+              filtered.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => { onChange(p.id); setOpen(false); setSearch(""); }}
+                  className={`
+                    w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors
+                    ${p.id === value ? "bg-indigo-50 text-indigo-700" : "hover:bg-slate-50 text-slate-700"}
+                  `}
+                >
+                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${
+                    p.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
+                  }`}>
+                    {getInitials(p)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="font-medium block truncate">
+                      {p.nama_panggilan || p.nama_lengkap.split(" ")[0]}
+                    </span>
+                    <span className="text-[11px] text-slate-400 block truncate">{p.nama_lengkap}</span>
+                  </span>
+                  {p.id === value && (
+                    <svg className="w-4 h-4 text-indigo-500 flex-shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface AdminPanelProps {
   initialPersons: Person[];
@@ -553,11 +724,32 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             </div>
             <div>
               <label className="label">Jenis Kelamin</label>
-              <select className="input" value={form.jenis_kelamin}
-                onChange={(e) => set("jenis_kelamin", e.target.value)}>
-                <option value="LAKI_LAKI">Laki-laki</option>
-                <option value="PEREMPUAN">Perempuan</option>
-              </select>
+              <div className="flex gap-2 mt-1">
+                {(["LAKI_LAKI", "PEREMPUAN"] as JenisKelamin[]).map((v) => (
+                  <label
+                    key={v}
+                    className={`
+                      flex items-center gap-2 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-all select-none flex-1 justify-center
+                      ${form.jenis_kelamin === v
+                        ? v === "LAKI_LAKI"
+                          ? "border-blue-400 bg-blue-50 text-blue-700 ring-2 ring-blue-100"
+                          : "border-pink-400 bg-pink-50 text-pink-700 ring-2 ring-pink-100"
+                        : "border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+                      }
+                    `}
+                  >
+                    <input
+                      type="radio"
+                      name="jenis_kelamin"
+                      value={v}
+                      checked={form.jenis_kelamin === v}
+                      onChange={() => set("jenis_kelamin", v)}
+                      className="sr-only"
+                    />
+                    <span>{v === "LAKI_LAKI" ? "♂ Laki-laki" : "♀ Perempuan"}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
@@ -577,27 +769,21 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             <div className="space-y-3">
               <div>
                 <label className="label">Ayah</label>
-                <select className="input" value={form.ayah_id}
-                  onChange={(e) => set("ayah_id", e.target.value)}>
-                  <option value="">– tidak ada –</option>
-                  {otherPersons.filter((p) => p.jenis_kelamin === "LAKI_LAKI").map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nama_panggilan ? `${p.nama_panggilan} · ` : ""}{p.nama_lengkap}
-                    </option>
-                  ))}
-                </select>
+                <PersonPicker
+                  value={form.ayah_id}
+                  onChange={(id) => set("ayah_id", id)}
+                  options={otherPersons.filter((p) => p.jenis_kelamin === "LAKI_LAKI")}
+                  placeholder="– tidak ada –"
+                />
               </div>
               <div>
                 <label className="label">Ibu</label>
-                <select className="input" value={form.ibu_id}
-                  onChange={(e) => set("ibu_id", e.target.value)}>
-                  <option value="">– tidak ada –</option>
-                  {otherPersons.filter((p) => p.jenis_kelamin === "PEREMPUAN").map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nama_panggilan ? `${p.nama_panggilan} · ` : ""}{p.nama_lengkap}
-                    </option>
-                  ))}
-                </select>
+                <PersonPicker
+                  value={form.ibu_id}
+                  onChange={(id) => set("ibu_id", id)}
+                  options={otherPersons.filter((p) => p.jenis_kelamin === "PEREMPUAN")}
+                  placeholder="– tidak ada –"
+                />
               </div>
             </div>
             {(form.ayah_id || form.ibu_id) && (
@@ -614,15 +800,12 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             <div className="space-y-3">
               <div>
                 <label className="label">Pasangan</label>
-                <select className="input" value={form.pasangan_id}
-                  onChange={(e) => set("pasangan_id", e.target.value)}>
-                  <option value="">– belum menikah –</option>
-                  {otherPersons.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nama_panggilan ? `${p.nama_panggilan} · ` : ""}{p.nama_lengkap}
-                    </option>
-                  ))}
-                </select>
+                <PersonPicker
+                  value={form.pasangan_id}
+                  onChange={(id) => set("pasangan_id", id)}
+                  options={otherPersons}
+                  placeholder="– belum menikah –"
+                />
               </div>
               {form.pasangan_id && (
                 <div>
