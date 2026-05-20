@@ -277,6 +277,99 @@ export function buildTreeLayout(
     }
   }
 
+  // ── Bottom-up re-centering ────────────────────────────────────────────────
+  // Children may have been pushed sideways by overlap resolution, leaving
+  // their parent couple displaced. Re-center each couple over its children,
+  // then cascade upward so grandparents follow.
+
+  // coupleId → [in-tree child IDs]
+  const coupleChildrenBU = new Map<string, string[]>();
+  for (const [childId, coupleId] of childToParentCouple) {
+    if (!coupleChildrenBU.has(coupleId)) coupleChildrenBU.set(coupleId, []);
+    coupleChildrenBU.get(coupleId)!.push(childId);
+  }
+
+  // All unique Y levels in personPos, deepest first
+  const allBUYs = [
+    ...new Set([...personPos.values()].map((p) => Math.round(p.y))),
+  ].sort((a, b) => b - a);
+
+  // Skip deepest level (leaves) — start from the second-deepest
+  for (let li = 1; li < allBUYs.length; li++) {
+    const currentY = allBUYs[li];
+
+    // Persons positioned at this Y level (±5 px tolerance)
+    const atLevel = [...personPos.entries()]
+      .filter(([, p]) => Math.abs(Math.round(p.y) - currentY) < 5)
+      .map(([id]) => id);
+    if (atLevel.length === 0) continue;
+
+    interface BUSlot {
+      ids: string[];
+      halfSpan: number;      // (maxX − minX) / 2 — members keep relative spacing
+      originalCenter: number;
+      targetCenter: number;
+    }
+
+    const processedHere = new Set<string>();
+    const buSlots: BUSlot[] = [];
+
+    for (const [coupleId, { a, b }] of coupleMap) {
+      if (!atLevel.includes(a) && !atLevel.includes(b)) continue;
+      if (processedHere.has(a) || processedHere.has(b)) continue;
+
+      // Everyone in this couple's "slot" moves together
+      const memberSet = new Set<string>();
+      if (personPos.has(a)) memberSet.add(a);
+      if (personPos.has(b)) memberSet.add(b);
+      for (const m of personMenantus.get(a) ?? []) if (personPos.has(m)) memberSet.add(m);
+      for (const m of personMenantus.get(b) ?? []) if (personPos.has(m)) memberSet.add(m);
+
+      const xs = [...memberSet].map((id) => personPos.get(id)!.x);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const originalCenter = (minX + maxX) / 2;
+      const halfSpan = (maxX - minX) / 2;
+
+      // Target = midpoint of the couple's children's final X span
+      const children = coupleChildrenBU.get(coupleId) ?? [];
+      let targetCenter = originalCenter; // no children → don't move
+      if (children.length > 0) {
+        const childXs = children.map((id) => personPos.get(id)?.x ?? 0);
+        targetCenter = (Math.min(...childXs) + Math.max(...childXs)) / 2;
+      }
+
+      buSlots.push({ ids: [...memberSet], halfSpan, originalCenter, targetCenter });
+      for (const id of memberSet) processedHere.add(id);
+    }
+
+    if (buSlots.length === 0) continue;
+
+    // Sort slots by target center
+    buSlots.sort((a, b) => a.targetCenter - b.targetCenter);
+
+    // Resolve overlaps left → right so re-centered slots don't collide
+    for (let i = 1; i < buSlots.length; i++) {
+      const prev = buSlots[i - 1];
+      const curr = buSlots[i];
+      const prevRight = prev.targetCenter + prev.halfSpan;
+      const currLeft = curr.targetCenter - curr.halfSpan;
+      if (currLeft < prevRight + SPACING) {
+        curr.targetCenter = prevRight + SPACING + curr.halfSpan;
+      }
+    }
+
+    // Apply shifts — every member in a slot shifts by the same amount
+    for (const slot of buSlots) {
+      const shift = slot.targetCenter - slot.originalCenter;
+      if (Math.abs(shift) < 1) continue;
+      for (const id of slot.ids) {
+        const pos = personPos.get(id)!;
+        personPos.set(id, { x: pos.x + shift, y: pos.y });
+      }
+    }
+  }
+
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
