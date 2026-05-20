@@ -377,6 +377,67 @@ export function buildTreeLayout(
     }
   }
 
+  // ── Final overlap sweep ───────────────────────────────────────────────────
+  // The bottom-up pass re-centers couples over their children but may push
+  // them into adjacent uncoupled persons (or into already-processed slots).
+  // Do one final left-to-right sweep per level, treating married pairs at
+  // the same level as atomic "clusters" that move together.
+  {
+    // Collect all positioned persons per rounded Y level
+    const sweepLevels = new Map<number, string[]>();
+    for (const [id, pos] of personPos) {
+      const y = Math.round(pos.y);
+      if (!sweepLevels.has(y)) sweepLevels.set(y, []);
+      sweepLevels.get(y)!.push(id);
+    }
+
+    for (const ids of sweepLevels.values()) {
+      if (ids.length <= 1) continue;
+
+      // Union-Find: persons in the same couple at this level move together
+      const par = new Map<string, string>(ids.map((id) => [id, id]));
+      const find = (x: string): string => {
+        if (par.get(x) !== x) par.set(x, find(par.get(x)!));
+        return par.get(x)!;
+      };
+      const union = (x: string, y: string) => par.set(find(x), find(y));
+      const idSet = new Set(ids);
+      for (const { a, b } of coupleMap.values()) {
+        if (idSet.has(a) && idSet.has(b)) union(a, b);
+      }
+
+      // Group into clusters, compute minX/maxX
+      const clusterMap = new Map<string, string[]>();
+      for (const id of ids) {
+        const root = find(id);
+        if (!clusterMap.has(root)) clusterMap.set(root, []);
+        clusterMap.get(root)!.push(id);
+      }
+      const clusters = [...clusterMap.values()]
+        .map((members) => {
+          const xs = members.map((id) => personPos.get(id)!.x);
+          return { members, minX: Math.min(...xs), maxX: Math.max(...xs) };
+        })
+        .sort((a, b) => a.minX - b.minX);
+
+      // Push clusters right to enforce SPACING between adjacent cluster edges
+      for (let i = 1; i < clusters.length; i++) {
+        const prev = clusters[i - 1];
+        const curr = clusters[i];
+        const needed = prev.maxX + SPACING;
+        if (curr.minX < needed) {
+          const shift = needed - curr.minX;
+          for (const id of curr.members) {
+            const p = personPos.get(id)!;
+            personPos.set(id, { x: p.x + shift, y: p.y });
+          }
+          curr.minX += shift;
+          curr.maxX += shift;
+        }
+      }
+    }
+  }
+
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
