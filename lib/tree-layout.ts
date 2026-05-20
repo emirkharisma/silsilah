@@ -158,35 +158,9 @@ export function buildTreeLayout(
     return (xa + xb) / 2;
   };
 
-  // Group in-tree persons by Y level
-  const SPACING = NODE_WIDTH + 80;
-  const levelGroups = new Map<number, string[]>();
-  for (const p of persons) {
-    if (!hasParent.has(p.id)) continue;
-    const pos = personPos.get(p.id);
-    if (!pos) continue;
-    const y = Math.round(pos.y);
-    if (!levelGroups.has(y)) levelGroups.set(y, []);
-    levelGroups.get(y)!.push(p.id);
-  }
+  const SPACING = NODE_WIDTH + 80; // center-to-center gap between adjacent cards
 
-  // Sort each level group: by parent couple X position, then by birth order within couple
-  for (const ids of levelGroups.values()) {
-    ids.sort((a, b) => {
-      const coupleA = childToParentCouple.get(a);
-      const coupleB = childToParentCouple.get(b);
-      const cxA = coupleA ? coupleApproxX(coupleA) : (childSingleParentX.get(a) ?? personPos.get(a)?.x ?? 0);
-      const cxB = coupleB ? coupleApproxX(coupleB) : (childSingleParentX.get(b) ?? personPos.get(b)?.x ?? 0);
-      if (Math.abs(cxA - cxB) > 1) return cxA - cxB;
-      // Same parent couple: sort by urutan_lahir (birth order)
-      const ua = personById.get(a)?.urutan_lahir ?? 999;
-      const ub = personById.get(b)?.urutan_lahir ?? 999;
-      if (ua !== ub) return ua - ub;
-      return a < b ? -1 : 1; // stable tiebreaker by id
-    });
-  }
-
-  // Collect menantus per in-tree spouse
+  // Collect menantus per in-tree spouse (needed before group expansion)
   const personMenantus = new Map<string, string[]>();
   for (const { a, b } of coupleMap.values()) {
     const aHasParent = hasParent.has(a);
@@ -198,43 +172,108 @@ export function buildTreeLayout(
     personMenantus.get(spouseId)!.push(menantuid);
   }
 
-  // Insert menantus: if single → right; if multiple → first left, rest right
-  for (const [spouseId, menantus] of personMenantus) {
-    const spousePos = personPos.get(spouseId);
-    if (!spousePos) continue;
-    const y = Math.round(spousePos.y);
-    const group = levelGroups.get(y);
-    if (!group) continue;
-    let spouseIdx = group.indexOf(spouseId);
-    if (spouseIdx === -1) continue;
-
-    if (menantus.length === 1) {
-      group.splice(spouseIdx + 1, 0, menantus[0]);
-      personPos.set(menantus[0], { x: 0, y: spousePos.y });
-    } else {
-      // First menantu goes LEFT (before spouse)
-      group.splice(spouseIdx, 0, menantus[0]);
-      personPos.set(menantus[0], { x: 0, y: spousePos.y });
-      spouseIdx += 1;
-      // Remaining menantus go RIGHT (after spouse)
-      for (let i = 1; i < menantus.length; i++) {
-        group.splice(spouseIdx + i, 0, menantus[i]);
-        personPos.set(menantus[i], { x: 0, y: spousePos.y });
-      }
-    }
+  // ── Per-family-group positioning ──────────────────────────────────────────
+  // Collect in-tree persons per dagre Y level
+  const levelInTreeMap = new Map<number, string[]>();
+  for (const p of persons) {
+    if (!hasParent.has(p.id)) continue;
+    const pos = personPos.get(p.id);
+    if (!pos) continue;
+    const y = Math.round(pos.y);
+    if (!levelInTreeMap.has(y)) levelInTreeMap.set(y, []);
+    levelInTreeMap.get(y)!.push(p.id);
   }
 
-  // Re-space each level group, keeping center of in-tree nodes
-  for (const [, ids] of levelGroups) {
-    const inTreeIds = ids.filter((id) => hasParent.has(id));
-    if (inTreeIds.length === 0) continue;
-    const centerX =
-      inTreeIds.reduce((sum, id) => sum + (personPos.get(id)?.x ?? 0), 0) /
-      inTreeIds.length;
-    const startX = centerX - ((ids.length - 1) / 2) * SPACING;
-    for (let i = 0; i < ids.length; i++) {
-      const pos = personPos.get(ids[i]);
-      if (pos) personPos.set(ids[i], { x: startX + i * SPACING, y: pos.y });
+  for (const [y, inTreeIds] of levelInTreeMap) {
+    // Group in-tree children by their parent couple
+    const coupleGroupMap = new Map<
+      string,
+      { coupleId: string | null; idealCenterX: number; members: string[] }
+    >();
+    for (const id of inTreeIds) {
+      const coupleId = childToParentCouple.get(id) ?? null;
+      const key = coupleId ?? `__solo_${id}`;
+      if (!coupleGroupMap.has(key)) {
+        const idealCenterX = coupleId
+          ? coupleApproxX(coupleId)
+          : (childSingleParentX.get(id) ?? personPos.get(id)?.x ?? 0);
+        coupleGroupMap.set(key, { coupleId, idealCenterX, members: [] });
+      }
+      coupleGroupMap.get(key)!.members.push(id);
+    }
+
+    // Sort members within each group by urutan_lahir
+    for (const g of coupleGroupMap.values()) {
+      g.members.sort((a, b) => {
+        const ua = personById.get(a)?.urutan_lahir ?? 999;
+        const ub = personById.get(b)?.urutan_lahir ?? 999;
+        if (ua !== ub) return ua - ub;
+        return a < b ? -1 : 1;
+      });
+    }
+
+    // Sort groups left-to-right by idealCenterX
+    const groups = [...coupleGroupMap.values()].sort(
+      (a, b) => a.idealCenterX - b.idealCenterX
+    );
+
+    // Expand each group to include menantus
+    // single menantu → right of spouse; multiple → first left, rest right
+    const expandedGroups = groups.map((g) => {
+      const expanded: string[] = [];
+      for (const memberId of g.members) {
+        const menantus = personMenantus.get(memberId) ?? [];
+        const spousePos = personPos.get(memberId);
+        if (menantus.length === 0) {
+          expanded.push(memberId);
+        } else if (menantus.length === 1) {
+          if (spousePos) personPos.set(menantus[0], { x: 0, y: spousePos.y });
+          expanded.push(memberId, menantus[0]);
+        } else {
+          if (spousePos) {
+            for (const m of menantus) personPos.set(m, { x: 0, y: spousePos.y });
+          }
+          expanded.push(menantus[0], memberId, ...menantus.slice(1));
+        }
+      }
+      return { idealCenterX: g.idealCenterX, members: expanded };
+    });
+
+    // Compute initial left/right bounds per group (centered at idealCenterX)
+    const layouts = expandedGroups.map((g) => {
+      const halfWidth = ((g.members.length - 1) / 2) * SPACING;
+      return {
+        members: g.members,
+        left: g.idealCenterX - halfWidth,
+        right: g.idealCenterX + halfWidth,
+      };
+    });
+
+    // Resolve overlaps left-to-right — push later groups right if they'd collide
+    // Min gap = SPACING so adjacent groups are never tighter than siblings within a group
+    for (let i = 1; i < layouts.length; i++) {
+      const prev = layouts[i - 1];
+      const curr = layouts[i];
+      const minLeft = prev.right + SPACING;
+      if (curr.left < minLeft) {
+        const shift = minLeft - curr.left;
+        curr.left += shift;
+        curr.right += shift;
+      }
+    }
+
+    // Assign final X positions to every member (in-tree children + menantus)
+    for (const { members, left } of layouts) {
+      for (let i = 0; i < members.length; i++) {
+        const memberId = members[i];
+        const existing = personPos.get(memberId);
+        const x = left + i * SPACING;
+        if (existing) {
+          personPos.set(memberId, { x, y: existing.y });
+        } else {
+          personPos.set(memberId, { x, y });
+        }
+      }
     }
   }
 
