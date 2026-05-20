@@ -5,11 +5,24 @@ import { PersonData, RelationshipData, MarriageData } from "@/lib/tree-layout";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [personsRaw, relationshipsRaw, marriagesRaw] = await Promise.all([
-    prisma.person.findMany({ orderBy: { created_at: "asc" } }),
-    prisma.relationship.findMany({ orderBy: { id: "asc" } }),
-    prisma.marriage.findMany({ orderBy: { urutan: "asc" } }),
-  ]);
+  let personsRaw, relationshipsRaw, marriagesRaw;
+  try {
+    [personsRaw, relationshipsRaw, marriagesRaw] = await Promise.all([
+      prisma.person.findMany({ orderBy: { created_at: "asc" } }),
+      prisma.relationship.findMany({ orderBy: { id: "asc" } }),
+      prisma.marriage.findMany({ orderBy: { urutan: "asc" } }),
+    ]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="max-w-md text-center p-8 bg-white rounded-2xl shadow border border-red-100">
+          <p className="text-red-500 font-semibold mb-2">Gagal terhubung ke database</p>
+          <p className="text-sm text-slate-500 font-mono break-all">{msg}</p>
+        </div>
+      </div>
+    );
+  }
 
   const persons: PersonData[] = personsRaw.map((p) => ({
     id: p.id,
