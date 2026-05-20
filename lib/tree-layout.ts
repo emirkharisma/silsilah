@@ -178,11 +178,10 @@ export function buildTreeLayout(
       const cxA = coupleA ? coupleApproxX(coupleA) : (childSingleParentX.get(a) ?? personPos.get(a)?.x ?? 0);
       const cxB = coupleB ? coupleApproxX(coupleB) : (childSingleParentX.get(b) ?? personPos.get(b)?.x ?? 0);
       if (Math.abs(cxA - cxB) > 1) return cxA - cxB;
-      // Same parent couple: use dagre X to preserve the crossing-minimised order dagre computed.
-      // (Dagre already factors in birth order via edge-insertion; sorting by its X ensures
-      // each parent stays above their own children and avoids crossing parent→child lines.)
-      const dxDiff = (personPos.get(a)?.x ?? 0) - (personPos.get(b)?.x ?? 0);
-      if (Math.abs(dxDiff) > 1) return dxDiff;
+      // Same parent couple: sort by urutan_lahir (birth order)
+      const ua = personById.get(a)?.urutan_lahir ?? 999;
+      const ub = personById.get(b)?.urutan_lahir ?? 999;
+      if (ua !== ub) return ua - ub;
       return a < b ? -1 : 1; // stable tiebreaker by id
     });
   }
