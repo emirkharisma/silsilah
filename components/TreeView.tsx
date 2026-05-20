@@ -39,10 +39,13 @@ function AutoCenter({ selectedPersonId, nodes }: { selectedPersonId?: string; no
     let cx = node.position.x + 88;
     const cy = node.position.y + 44;
 
-    // On desktop the sidebar covers the right 320px — shift target left so
-    // the node ends up centred in the visible canvas, not the full viewport.
+    // On desktop the sidebar covers the right 320px.
+    // setCenter(cx,cy) places that flow point at the full viewport centre.
+    // The visible canvas centre is 160px LEFT of the viewport centre, so we
+    // add 160/zoom to cx — that shifts the viewport right so cx lands at the
+    // visible-area centre rather than the full-viewport centre.
     if (typeof window !== "undefined" && window.innerWidth >= 768) {
-      cx -= SIDEBAR_W / 2 / zoom;
+      cx += SIDEBAR_W / 2 / zoom;
     }
 
     setCenter(cx, cy, { zoom, duration: 500 });
