@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   NodeTypes,
@@ -84,8 +85,11 @@ export default function TreeView({
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#e2e8f0" gap={24} />
-        <Controls className="!border-slate-200 !shadow-sm" />
+        <Background color="#cbd5e1" gap={20} size={1.5} variant={BackgroundVariant.Dots} />
+        <Controls
+          className="!border-slate-200 !shadow-sm !rounded-xl overflow-hidden"
+          showInteractive={false}
+        />
         <MiniMap
           nodeColor={(node) => {
             if (node.type === "coupleNode") return "#e2e8f0";
@@ -93,8 +97,9 @@ export default function TreeView({
             if (person?.jenis_kelamin === "LAKI_LAKI") return "#bfdbfe";
             return "#fce7f3";
           }}
-          className="!border-slate-200 !shadow-sm"
+          className="!border-slate-200 !shadow-sm !rounded-xl overflow-hidden"
           style={{ width: 120, height: 80 }}
+          maskColor="rgba(248,250,252,0.7)"
         />
       </ReactFlow>
     </div>

@@ -40,8 +40,12 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
       {/* Topbar */}
       <header className="h-14 border-b border-slate-200 bg-white flex items-center px-5 gap-4 flex-shrink-0 z-10">
         <div className="flex items-center gap-2 mr-4">
-          <span className="text-lg">🌳</span>
-          <span className="font-semibold text-slate-800 text-sm">Silsilah Keluarga</span>
+          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <span className="font-semibold text-slate-800 text-sm tracking-tight">Silsilah Keluarga</span>
         </div>
 
         {/* Search */}

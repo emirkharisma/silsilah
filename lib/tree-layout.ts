@@ -12,6 +12,7 @@ export type PersonData = {
   is_deceased: boolean;
   urutan_lahir: number | null;
   foto_url: string | null;
+  catatan: string | null;
 };
 
 export type RelationshipData = {
@@ -27,8 +28,8 @@ export type MarriageData = {
   status: StatusPernikahan;
 };
 
-const NODE_WIDTH = 160;
-const NODE_HEIGHT = 80;
+const NODE_WIDTH = 176;
+const NODE_HEIGHT = 84;
 const COUPLE_DOT_SIZE = 10;
 
 export function buildTreeLayout(
