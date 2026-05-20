@@ -48,7 +48,7 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
   const others = allPersons.filter((p) => p.id !== person.id);
 
   return (
-    <aside className="flex flex-col overflow-y-auto h-full">
+    <aside className="flex flex-col overflow-y-auto h-full overscroll-contain">
       {/* Header */}
       <div className="p-5 border-b border-slate-100 flex-shrink-0">
         <button

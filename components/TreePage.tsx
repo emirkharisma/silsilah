@@ -78,18 +78,18 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
   return (
     <div className="flex flex-col h-screen bg-slate-50">
       {/* Topbar */}
-      <header className="h-14 border-b border-slate-200 bg-white flex items-center px-5 gap-4 flex-shrink-0 z-10">
-        <div className="flex items-center gap-2 mr-4">
+      <header className="h-14 border-b border-slate-200 bg-white flex items-center px-4 md:px-5 gap-3 md:gap-4 flex-shrink-0 z-10">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <span className="font-semibold text-slate-800 text-sm tracking-tight">Silsilah Keluarga</span>
+          <span className="font-semibold text-slate-800 text-sm tracking-tight hidden sm:block">Silsilah Keluarga</span>
         </div>
 
         {/* Search */}
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 max-w-xs md:max-w-sm">
           <input
             type="text"
             placeholder="Cari anggota keluarga..."
@@ -138,8 +138,8 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
           )}
         </div>
 
-        <div className="ml-auto">
-          <span className="text-xs text-slate-400">{persons.length} anggota</span>
+        <div className="ml-auto flex-shrink-0">
+          <span className="text-xs text-slate-400 hidden sm:block">{persons.length} anggota</span>
         </div>
       </header>
 
@@ -154,15 +154,47 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
           highlightSet={highlightSet}
         />
 
-        {/* Slide-in detail panel */}
+        {/* ── Desktop: right slide-in panel (md+) ── */}
         <div
           className={`
+            hidden md:block
             absolute top-0 right-0 h-full w-80 bg-white border-l border-slate-200 shadow-xl
             transition-transform duration-300 ease-in-out z-10
             ${selectedPerson ? "translate-x-0" : "translate-x-full"}
           `}
         >
           <Sidebar person={selectedPerson} allPersons={persons} onClose={() => handlePersonSelect(null)} />
+        </div>
+
+        {/* ── Mobile: bottom sheet (<md) ── */}
+        {/* Backdrop */}
+        <div
+          className={`
+            md:hidden absolute inset-0 bg-black/30 z-10
+            transition-opacity duration-300
+            ${selectedPerson ? "opacity-100" : "opacity-0 pointer-events-none"}
+          `}
+          onClick={() => handlePersonSelect(null)}
+        />
+        {/* Sheet */}
+        <div
+          className={`
+            md:hidden absolute bottom-0 left-0 right-0 z-20
+            bg-white rounded-t-3xl shadow-2xl
+            flex flex-col
+            transition-transform duration-300 ease-in-out
+            max-h-[78vh]
+            ${selectedPerson ? "translate-y-0" : "translate-y-full"}
+          `}
+        >
+          {/* Drag handle */}
+          <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+            <div className="w-10 h-1 rounded-full bg-slate-200" />
+          </div>
+          {/* Scrollable content */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <Sidebar person={selectedPerson} allPersons={persons} onClose={() => handlePersonSelect(null)} />
+          </div>
         </div>
       </div>
     </div>
