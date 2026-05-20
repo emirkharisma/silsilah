@@ -318,7 +318,17 @@ export function buildTreeLayout(
       if (!atLevel.includes(a) && !atLevel.includes(b)) continue;
       if (processedHere.has(a) || processedHere.has(b)) continue;
 
-      // Everyone in this couple's "slot" moves together
+      const posA = personPos.get(a);
+      const posB = personPos.get(b);
+      if (!posA || !posB) continue;
+
+      // originalCenter is the midpoint of THIS couple's two spouses only.
+      // Do NOT include other-marriage menantus here — that caused a wrong
+      // shift when one spouse has children with multiple partners.
+      const originalCenter = (posA.x + posB.x) / 2;
+
+      // All persons that must move together: {a, b} plus any other menantus
+      // of a/b (so their relative spacing is preserved after the shift).
       const memberSet = new Set<string>();
       if (personPos.has(a)) memberSet.add(a);
       if (personPos.has(b)) memberSet.add(b);
@@ -326,10 +336,7 @@ export function buildTreeLayout(
       for (const m of personMenantus.get(b) ?? []) if (personPos.has(m)) memberSet.add(m);
 
       const xs = [...memberSet].map((id) => personPos.get(id)!.x);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const originalCenter = (minX + maxX) / 2;
-      const halfSpan = (maxX - minX) / 2;
+      const halfSpan = (Math.max(...xs) - Math.min(...xs)) / 2;
 
       // Target = midpoint of the couple's children's final X span
       const children = coupleChildrenBU.get(coupleId) ?? [];
