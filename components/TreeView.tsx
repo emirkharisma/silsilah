@@ -150,6 +150,13 @@ export default function TreeView({
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
+        // Figma-style navigation:
+        // two-finger scroll → pan, pinch → zoom, drag → pan
+        panOnScroll
+        panOnScrollMode={"free" as never}
+        zoomOnScroll={false}
+        zoomOnPinch
+        panOnDrag
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.2}
