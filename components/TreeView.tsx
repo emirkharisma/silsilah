@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import {
   ReactFlow,
   Background,
@@ -10,6 +10,7 @@ import {
   NodeTypes,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -18,6 +19,25 @@ import PersonNode from "./PersonNode";
 import CoupleNode from "./CoupleNode";
 import FamilyEdge from "./FamilyEdge";
 import { buildTreeLayout, PersonData, RelationshipData, MarriageData } from "@/lib/tree-layout";
+
+// Centers the viewport on the selected person node whenever selection changes.
+// Must be rendered inside <ReactFlow> to access useReactFlow().
+function AutoCenter({ selectedPersonId, nodes }: { selectedPersonId?: string; nodes: Node[] }) {
+  const { setCenter, getZoom } = useReactFlow();
+
+  useEffect(() => {
+    if (!selectedPersonId) return;
+    const node = nodes.find((n) => n.id === selectedPersonId);
+    if (!node) return;
+    // PersonNode is w-44 (176px) wide; height ~88px
+    const cx = node.position.x + 88;
+    const cy = node.position.y + 44;
+    setCenter(cx, cy, { zoom: Math.max(getZoom(), 0.8), duration: 500 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPersonId]);
+
+  return null;
+}
 
 const nodeTypes: NodeTypes = {
   personNode: PersonNode,
@@ -120,6 +140,7 @@ export default function TreeView({
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
+        <AutoCenter selectedPersonId={selectedPersonId} nodes={nodes} />
         <Background color="#cbd5e1" gap={20} size={1.5} variant={BackgroundVariant.Dots} />
         <Controls
           className="!border-slate-200 !shadow-sm !rounded-xl overflow-hidden"
