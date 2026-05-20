@@ -144,15 +144,12 @@ export function buildTreeLayout(
     }
   }
 
-  // Get couple's approximate X — use only the in-tree spouse's dagre X
-  // (menantus have no parent edges so dagre places them at rank 0, giving wrong average)
+  // Get couple's X midpoint from current personPos.
+  // Levels are processed top-to-bottom, so by the time a child's level is laid out,
+  // both spouses (including any menantu) have already been assigned their final X.
   const coupleApproxX = (coupleId: string): number => {
     const c = coupleMap.get(coupleId);
     if (!c) return 0;
-    const aInTree = hasParent.has(c.a);
-    const bInTree = hasParent.has(c.b);
-    if (aInTree && !bInTree) return personPos.get(c.a)?.x ?? 0;
-    if (bInTree && !aInTree) return personPos.get(c.b)?.x ?? 0;
     const xa = personPos.get(c.a)?.x ?? 0;
     const xb = personPos.get(c.b)?.x ?? 0;
     return (xa + xb) / 2;
@@ -184,7 +181,10 @@ export function buildTreeLayout(
     levelInTreeMap.get(y)!.push(p.id);
   }
 
-  for (const [y, inTreeIds] of levelInTreeMap) {
+  // Process levels top-to-bottom so parent positions are finalised before children read them
+  const sortedLevels = [...levelInTreeMap.entries()].sort(([ya], [yb]) => ya - yb);
+
+  for (const [y, inTreeIds] of sortedLevels) {
     // Group in-tree children by their parent couple
     const coupleGroupMap = new Map<
       string,

@@ -10,8 +10,12 @@ export default function FamilyEdge({
   targetY,
   style,
 }: EdgeProps) {
+  // If source and target are horizontally aligned (single child), draw a straight vertical line
+  const isStraight = Math.abs(sourceX - targetX) < 2;
   const bendY = targetY - 30;
-  const d = `M ${sourceX} ${sourceY} L ${sourceX} ${bendY} L ${targetX} ${bendY} L ${targetX} ${targetY}`;
+  const d = isStraight
+    ? `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`
+    : `M ${sourceX} ${sourceY} L ${sourceX} ${bendY} L ${targetX} ${bendY} L ${targetX} ${targetY}`;
 
   return (
     <path
