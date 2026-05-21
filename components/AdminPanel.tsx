@@ -1377,7 +1377,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                   {(["ALL", "LAKI_LAKI", "PEREMPUAN"] as FilterGender[]).map((v) => (
                     <button key={v} onClick={() => setDraftGender(v)}
                       className={`flex-1 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
-                        draftGender === v ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-200"
+                        draftGender === v ? "bg-indigo-50 text-indigo-600 border-indigo-400" : "bg-white text-slate-500 border-slate-200"
                       }`}>
                       {v === "ALL" ? "Semua" : v === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
                     </button>
@@ -1391,7 +1391,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                   {(["ALL", "ALIVE", "DECEASED"] as FilterStatus[]).map((v) => (
                     <button key={v} onClick={() => setDraftStatus(v)}
                       className={`flex-1 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
-                        draftStatus === v ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-200"
+                        draftStatus === v ? "bg-indigo-50 text-indigo-600 border-indigo-400" : "bg-white text-slate-500 border-slate-200"
                       }`}>
                       {v === "ALL" ? "Semua" : v === "ALIVE" ? "Masih hidup" : "Almarhum"}
                     </button>
