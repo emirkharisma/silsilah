@@ -180,7 +180,7 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
         <div
           className={`
             md:hidden absolute bottom-0 left-0 right-0 z-20
-            bg-white rounded-t-3xl shadow-2xl
+            bg-white rounded-t-3xl shadow-2xl overflow-hidden
             flex flex-col
             transition-transform duration-300 ease-in-out
             max-h-[78vh]
@@ -192,7 +192,7 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
             <div className="w-10 h-1 rounded-full bg-slate-200" />
           </div>
           {/* Scrollable content */}
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0">
             <Sidebar person={selectedPerson} allPersons={persons} onClose={() => handlePersonSelect(null)} />
           </div>
         </div>
