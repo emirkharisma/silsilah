@@ -37,15 +37,22 @@ function AutoCenter({ selectedPersonId, nodes }: { selectedPersonId?: string; no
     const zoom = Math.max(getZoom(), 0.8);
     // PersonNode is w-44 (176px) wide; height ~88px
     let cx = node.position.x + 88;
-    const cy = node.position.y + 44;
+    let cy = node.position.y + 44;
 
-    // On desktop the sidebar covers the right 320px.
-    // setCenter(cx,cy) places that flow point at the full viewport centre.
-    // The visible canvas centre is 160px LEFT of the viewport centre, so we
-    // add 160/zoom to cx — that shifts the viewport right so cx lands at the
-    // visible-area centre rather than the full-viewport centre.
-    if (typeof window !== "undefined" && window.innerWidth >= 768) {
-      cx += SIDEBAR_W / 2 / zoom;
+    if (typeof window !== "undefined") {
+      if (window.innerWidth >= 768) {
+        // Desktop: sidebar covers right 320px.
+        // Add 160/zoom so node lands at centre of visible canvas (left of sidebar).
+        cx += SIDEBAR_W / 2 / zoom;
+      } else {
+        // Mobile: bottom sheet covers ~78vh from the bottom.
+        // Visible canvas = top 22% of viewport. Its centre = 11% from top.
+        // setCenter puts the flow point at viewport centre (50% from top).
+        // Shift cy UP so node appears at the visible-area centre:
+        //   offset = (50% − 11%) × viewportHeight / zoom
+        const visibleCentre = (1 - 0.78) / 2; // 11% from top
+        cy -= ((0.5 - visibleCentre) * window.innerHeight) / zoom;
+      }
     }
 
     setCenter(cx, cy, { zoom, duration: 500 });

@@ -156,11 +156,7 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
           />
         </div>
 
-        {/* ── Mobile: bottom sheet (<md) ── */}
-        <div
-          className={`md:hidden absolute inset-0 bg-black/30 z-10 transition-opacity duration-300 ${selectedPerson ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-          onClick={handleClose}
-        />
+        {/* ── Mobile: bottom sheet (<md) ── no backdrop so canvas stays clickable */}
         <div className={`
           md:hidden absolute bottom-0 left-0 right-0 z-20
           bg-white rounded-t-3xl shadow-2xl overflow-hidden
