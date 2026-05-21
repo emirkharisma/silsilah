@@ -142,6 +142,18 @@ export default function TreeView({
     onPersonSelect(null);
   }, [onPersonSelect]);
 
+  // Constrain panning so the user can't scroll far from the tree content
+  const translateExtent = useMemo((): [[number, number], [number, number]] => {
+    if (nodes.length === 0) return [[-400, -400], [400, 400]];
+    const pad = 400; // breathing room around the tree
+    const xs = nodes.map((n) => n.position.x);
+    const ys = nodes.map((n) => n.position.y);
+    return [
+      [Math.min(...xs) - pad,       Math.min(...ys) - pad],
+      [Math.max(...xs) + 300 + pad, Math.max(...ys) + 120 + pad], // +300/+120 = node w/h
+    ];
+  }, [nodes]);
+
   return (
     <div className="w-full h-full">
       <style>{`.react-flow__handle { opacity: 0 !important; background: transparent !important; border-color: transparent !important; }`}</style>
@@ -168,6 +180,7 @@ export default function TreeView({
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.2}
         maxZoom={2}
+        translateExtent={translateExtent}
         proOptions={{ hideAttribution: true }}
       >
         <AutoCenter selectedPersonId={selectedPersonId} nodes={nodes} />
