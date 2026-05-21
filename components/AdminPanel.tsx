@@ -259,6 +259,29 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
   const [filterGender, setFilterGender] = useState<FilterGender>("ALL");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("ALL");
 
+  // Mobile filter bottom sheet
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [filterSheetAnimIn, setFilterSheetAnimIn] = useState(false);
+  const [draftGender, setDraftGender] = useState<FilterGender>("ALL");
+  const [draftStatus, setDraftStatus] = useState<FilterStatus>("ALL");
+
+  const openFilterSheet = () => {
+    setDraftGender(filterGender);
+    setDraftStatus(filterStatus);
+    setFilterSheetOpen(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setFilterSheetAnimIn(true)));
+  };
+  const closeFilterSheet = () => {
+    setFilterSheetAnimIn(false);
+    setTimeout(() => setFilterSheetOpen(false), 300);
+  };
+  const applyFilter = () => {
+    setFilterGender(draftGender);
+    setFilterStatus(draftStatus);
+    closeFilterSheet();
+  };
+  const activeFilterCount = (filterGender !== "ALL" ? 1 : 0) + (filterStatus !== "ALL" ? 1 : 0);
+
   // ── helpers ──────────────────────────────────────────────────────────
   const getName = (id: string) => {
     const p = persons.find((x) => x.id === id);
@@ -572,8 +595,9 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
         </div>
 
         {/* Search & filter bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-3">
-          <div className="relative flex-1 sm:max-w-sm">
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1">
             <svg className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -593,42 +617,72 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             )}
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-          {/* Gender filter */}
-          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
-            {(["ALL", "LAKI_LAKI", "PEREMPUAN"] as FilterGender[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setFilterGender(v)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  filterGender === v ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                {v === "ALL" ? "Semua" : v === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
-              </button>
-            ))}
+          {/* Desktop inline filters */}
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+            {/* Gender filter */}
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
+              {(["ALL", "LAKI_LAKI", "PEREMPUAN"] as FilterGender[]).map((v) => (
+                <button key={v} onClick={() => setFilterGender(v)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${filterGender === v ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-800"}`}>
+                  {v === "ALL" ? "Semua" : v === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
+                </button>
+              ))}
+            </div>
+            {/* Status filter */}
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
+              {(["ALL", "ALIVE", "DECEASED"] as FilterStatus[]).map((v) => (
+                <button key={v} onClick={() => setFilterStatus(v)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${filterStatus === v ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-800"}`}>
+                  {v === "ALL" ? "Semua" : v === "ALIVE" ? "Masih hidup" : "Almarhum"}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-slate-400 ml-1">{filtered.length} dari {persons.length}</span>
           </div>
 
-          {/* Status filter */}
-          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
-            {(["ALL", "ALIVE", "DECEASED"] as FilterStatus[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setFilterStatus(v)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  filterStatus === v ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                {v === "ALL" ? "Semua" : v === "ALIVE" ? "Masih hidup" : "Almarhum"}
-              </button>
-            ))}
-          </div>
-          </div>{/* end filter groups wrapper */}
-
-          <span className="text-xs text-slate-400 hidden sm:block sm:ml-auto">
-            {filtered.length} dari {persons.length} anggota
-          </span>
+          {/* Mobile filter button */}
+          <button
+            onClick={openFilterSheet}
+            className={`sm:hidden relative flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors flex-shrink-0 ${
+              activeFilterCount > 0
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white text-slate-600 border-slate-200"
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+            </svg>
+            <span className="font-medium">Filter</span>
+            {activeFilterCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-white text-indigo-600 text-[10px] font-bold flex items-center justify-center leading-none">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Mobile: active filter chips */}
+        {activeFilterCount > 0 && (
+          <div className="sm:hidden flex items-center gap-2 flex-wrap">
+            {filterGender !== "ALL" && (
+              <span className="flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full font-medium">
+                {filterGender === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
+                <button onClick={() => setFilterGender("ALL")} className="ml-0.5 text-indigo-400 hover:text-indigo-700">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </span>
+            )}
+            {filterStatus !== "ALL" && (
+              <span className="flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full font-medium">
+                {filterStatus === "ALIVE" ? "Masih hidup" : "Almarhum"}
+                <button onClick={() => setFilterStatus("ALL")} className="ml-0.5 text-indigo-400 hover:text-indigo-700">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </span>
+            )}
+            <span className="text-xs text-slate-400 ml-auto">{filtered.length} dari {persons.length}</span>
+          </div>
+        )}
 
         {/* Table — desktop only */}
         <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -1289,6 +1343,80 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
           </div>
         )}
       </div>
+
+      {/* ── Mobile filter bottom sheet ── */}
+      {filterSheetOpen && (
+        <>
+          <div
+            className={`fixed inset-0 bg-black/40 z-50 transition-opacity duration-300 ${filterSheetAnimIn ? "opacity-100" : "opacity-0"}`}
+            onClick={closeFilterSheet}
+          />
+          <div
+            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl flex flex-col transition-transform duration-300 ease-out overflow-hidden"
+            style={{ transform: filterSheetAnimIn ? "translateY(0)" : "translateY(100%)" }}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-slate-200" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 flex-shrink-0">
+              <h3 className="font-semibold text-slate-800">Filter</h3>
+              <button onClick={closeFilterSheet} className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Filter options */}
+            <div className="px-4 py-5 space-y-5">
+              {/* Gender */}
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2.5">Jenis Kelamin</p>
+                <div className="flex gap-2">
+                  {(["ALL", "LAKI_LAKI", "PEREMPUAN"] as FilterGender[]).map((v) => (
+                    <button key={v} onClick={() => setDraftGender(v)}
+                      className={`flex-1 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
+                        draftGender === v ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-200"
+                      }`}>
+                      {v === "ALL" ? "Semua" : v === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Status */}
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2.5">Status</p>
+                <div className="flex gap-2">
+                  {(["ALL", "ALIVE", "DECEASED"] as FilterStatus[]).map((v) => (
+                    <button key={v} onClick={() => setDraftStatus(v)}
+                      className={`flex-1 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
+                        draftStatus === v ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-200"
+                      }`}>
+                      {v === "ALL" ? "Semua" : v === "ALIVE" ? "Masih hidup" : "Almarhum"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Footer buttons */}
+            <div className="px-4 pb-8 pt-2 flex gap-2 flex-shrink-0">
+              <button
+                onClick={applyFilter}
+                className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+              >
+                Terapkan
+              </button>
+              <button
+                onClick={closeFilterSheet}
+                className="px-5 py-3 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
