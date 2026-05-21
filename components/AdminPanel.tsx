@@ -1,37 +1,26 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
 import { Person, Relationship, Marriage, JenisKelamin, StatusPernikahan } from "@prisma/client";
 
-// ── Reusable searchable person picker ────────────────────────────────────────
+// ── Reusable searchable person picker (desktop dropdown only)  ─────────────────
+// On mobile the parent panel swaps content — onMobilePick() is called instead.
 interface PersonPickerProps {
   value: string;
   onChange: (id: string) => void;
   options: Person[];
   placeholder: string;
+  onMobilePick?: () => void; // mobile: delegate to parent panel
 }
 
-function PersonPicker({ value, onChange, options, placeholder }: PersonPickerProps) {
+function PersonPicker({ value, onChange, options, placeholder, onMobilePick }: PersonPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
-  const desktopSearchRef = useRef<HTMLInputElement>(null);
-  const mobileSearchRef = useRef<HTMLInputElement>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [sheetAnimIn, setSheetAnimIn] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const selected = options.find((p) => p.id === value) ?? null;
-
-  useEffect(() => {
-    setMounted(true);
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -43,9 +32,9 @@ function PersonPicker({ value, onChange, options, placeholder }: PersonPickerPro
     );
   }, [options, search]);
 
-  // Desktop: close on outside click
+  // Close on outside click (desktop only)
   useEffect(() => {
-    if (!open || isMobile) return;
+    if (!open || onMobilePick) return;
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false); setSearch("");
@@ -53,95 +42,32 @@ function PersonPicker({ value, onChange, options, placeholder }: PersonPickerPro
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [open, isMobile]);
+  }, [open, onMobilePick]);
 
-  // Desktop: focus search on open
+  // Focus search on open
   useEffect(() => {
-    if (open && !isMobile) setTimeout(() => desktopSearchRef.current?.focus(), 50);
-  }, [open, isMobile]);
-
-  // Mobile sheet animation
-  useEffect(() => {
-    if (open && isMobile) {
-      requestAnimationFrame(() => requestAnimationFrame(() => setSheetAnimIn(true)));
-    } else {
-      setSheetAnimIn(false);
-    }
-  }, [open, isMobile]);
-
-  // Mobile: focus search after animation
-  useEffect(() => {
-    if (sheetAnimIn) setTimeout(() => mobileSearchRef.current?.focus(), 200);
-  }, [sheetAnimIn]);
-
-  const closeSheet = () => {
-    setSheetAnimIn(false);
-    setTimeout(() => { setOpen(false); setSearch(""); }, 300);
-  };
+    if (open && !onMobilePick) setTimeout(() => searchRef.current?.focus(), 50);
+  }, [open, onMobilePick]);
 
   const selectOption = (id: string) => {
     onChange(id);
-    if (isMobile) closeSheet();
-    else { setOpen(false); setSearch(""); }
+    setOpen(false); setSearch("");
   };
 
   const getInitials = (p: Person) =>
     p.nama_lengkap.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-
-  // Shared option list
-  const OptionList = ({ inputRef }: { inputRef: React.RefObject<HTMLInputElement> }) => (
-    <>
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 rounded-xl mx-4 mb-2">
-        <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <input ref={inputRef} type="text" placeholder="Cari nama..." value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400" />
-        {search && (
-          <button onClick={() => setSearch("")} className="text-slate-400 hover:text-slate-600">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
-      {/* Clear */}
-      <button type="button" onClick={() => selectOption("")}
-        className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm border-b border-slate-50 ${!value ? "bg-indigo-50 text-indigo-700" : "text-slate-400 active:bg-slate-50"}`}>
-        <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs bg-slate-100 text-slate-400 flex-shrink-0">–</span>
-        <span className="italic">{placeholder}</span>
-        {!value && <svg className="w-4 h-4 text-indigo-500 flex-shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-      </button>
-      {filtered.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-6">Tidak ditemukan</p>
-      ) : filtered.map((p) => (
-        <button key={p.id} type="button" onClick={() => selectOption(p.id)}
-          className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${p.id === value ? "bg-indigo-50 text-indigo-700" : "active:bg-slate-50 text-slate-700"}`}>
-          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${p.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
-            {getInitials(p)}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="font-medium block truncate">{p.nama_panggilan || p.nama_lengkap.split(" ")[0]}</span>
-            <span className="text-[11px] text-slate-400 block truncate">{p.nama_lengkap}</span>
-          </span>
-          {p.id === value && <svg className="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-        </button>
-      ))}
-    </>
-  );
 
   return (
     <div className="relative" ref={containerRef}>
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => { setOpen((v) => !v); setSearch(""); }}
+        onClick={() => onMobilePick ? onMobilePick() : setOpen((v) => !v)}
         className={`
           w-full flex items-center justify-between gap-2
           text-sm border rounded-xl px-3 py-2.5 bg-white text-left
           transition-all duration-150
-          ${open && !isMobile ? "border-indigo-400 ring-2 ring-indigo-100" : "border-slate-200 hover:border-slate-300"}
+          ${open && !onMobilePick ? "border-indigo-400 ring-2 ring-indigo-100" : "border-slate-200 hover:border-slate-300"}
         `}
       >
         {selected ? (
@@ -154,21 +80,21 @@ function PersonPicker({ value, onChange, options, placeholder }: PersonPickerPro
         ) : (
           <span className="text-slate-400">{placeholder}</span>
         )}
-        <svg className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-150 ${open && !isMobile ? "rotate-180" : ""}`}
+        <svg className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-150 ${open && !onMobilePick ? "rotate-180" : ""}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {/* Desktop dropdown */}
-      {open && !isMobile && (
+      {open && !onMobilePick && (
         <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="p-2 border-b border-slate-100">
             <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
               <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <input ref={desktopSearchRef} type="text" placeholder="Cari nama..." value={search}
+              <input ref={searchRef} type="text" placeholder="Cari nama..." value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400" />
               {search && (
@@ -204,39 +130,6 @@ function PersonPicker({ value, onChange, options, placeholder }: PersonPickerPro
             ))}
           </div>
         </div>
-      )}
-
-      {/* Mobile bottom sheet via portal */}
-      {mounted && isMobile && open && createPortal(
-        <>
-          <div
-            className={`fixed inset-0 bg-black/40 z-[200] transition-opacity duration-300 ${sheetAnimIn ? "opacity-100" : "opacity-0"}`}
-            onClick={closeSheet}
-          />
-          <div
-            className="fixed bottom-0 left-0 right-0 z-[201] bg-white rounded-t-3xl shadow-2xl flex flex-col transition-transform duration-300 ease-out overflow-hidden"
-            style={{ maxHeight: "70vh", transform: sheetAnimIn ? "translateY(0)" : "translateY(100%)" }}
-          >
-            {/* Drag handle */}
-            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-              <div className="w-10 h-1 rounded-full bg-slate-200" />
-            </div>
-            {/* Sheet header */}
-            <div className="flex items-center justify-between px-4 pb-3 flex-shrink-0">
-              <p className="font-semibold text-slate-800">{placeholder}</p>
-              <button onClick={closeSheet} className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            {/* Scrollable list */}
-            <div className="overflow-y-auto overscroll-contain flex-1 pb-8">
-              <OptionList inputRef={mobileSearchRef} />
-            </div>
-          </div>
-        </>,
-        document.body
       )}
     </div>
   );
@@ -322,6 +215,21 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
   const [isMobilePanel, setIsMobilePanel] = useState(false);
   const [panelMounted, setPanelMounted] = useState(false);
   const [panelAnimIn, setPanelAnimIn] = useState(false);
+
+  // Active picker replaces form content on mobile
+  type PickerField = "ayah_id" | "ibu_id" | "pasangan_id";
+  const [activePicker, setActivePicker] = useState<{
+    field: PickerField;
+    options: Person[];
+    placeholder: string;
+    search: string;
+  } | null>(null);
+  const pickerSearchRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus picker search when it opens
+  useEffect(() => {
+    if (activePicker) setTimeout(() => pickerSearchRef.current?.focus(), 150);
+  }, [activePicker]);
 
   useEffect(() => {
     setPanelMounted(true);
@@ -489,6 +397,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
 
   function closePanel() {
     setPanelAnimIn(false);
+    setActivePicker(null);
     setTimeout(() => {
       setPanelOpen(false);
       setEditingId(null);
@@ -1121,13 +1030,24 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
         )}
 
         {/* Panel header */}
-        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-slate-100 flex-shrink-0">
-          <h2 className="font-semibold text-slate-800 text-sm leading-tight">
-            {getPanelTitle()}
+        <div className="flex items-center gap-2 px-4 md:px-6 py-3 md:py-4 border-b border-slate-100 flex-shrink-0">
+          {/* Back button — shown when mobile picker is active */}
+          {activePicker && (
+            <button
+              onClick={() => setActivePicker(null)}
+              className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          <h2 className="font-semibold text-slate-800 text-sm leading-tight flex-1 truncate">
+            {activePicker ? activePicker.placeholder : getPanelTitle()}
           </h2>
           <button
             onClick={closePanel}
-            className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -1135,7 +1055,77 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
           </button>
         </div>
 
-        {/* Panel body */}
+        {/* Panel body — picker view or form */}
+        {activePicker ? (
+          // ── Mobile inline picker ─────────────────────────────────────────
+          <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col">
+            {/* Search */}
+            <div className="px-4 pt-3 pb-2 flex-shrink-0">
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 rounded-xl">
+                <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  ref={pickerSearchRef}
+                  type="text"
+                  placeholder="Cari nama..."
+                  value={activePicker.search}
+                  onChange={(e) => setActivePicker((prev) => prev ? { ...prev, search: e.target.value } : prev)}
+                  className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400"
+                />
+                {activePicker.search && (
+                  <button onClick={() => setActivePicker((prev) => prev ? { ...prev, search: "" } : prev)} className="text-slate-400">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+            {/* Options */}
+            <div className="flex-1 pb-8">
+              {/* Clear option */}
+              <button type="button"
+                onClick={() => { set(activePicker.field, ""); setActivePicker(null); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm border-b border-slate-50 ${!form[activePicker.field] ? "bg-indigo-50 text-indigo-700" : "text-slate-400 active:bg-slate-50"}`}>
+                <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs bg-slate-100 text-slate-400 flex-shrink-0">–</span>
+                <span className="italic">{activePicker.placeholder}</span>
+                {!form[activePicker.field] && <svg className="w-4 h-4 text-indigo-500 flex-shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+              </button>
+              {(() => {
+                const q = activePicker.search.toLowerCase().trim();
+                const filtered = q
+                  ? activePicker.options.filter((p) =>
+                      p.nama_lengkap.toLowerCase().includes(q) ||
+                      (p.nama_panggilan?.toLowerCase().includes(q) ?? false)
+                    )
+                  : activePicker.options;
+                if (filtered.length === 0)
+                  return <p className="text-sm text-slate-400 text-center py-8">Tidak ditemukan</p>;
+                return filtered.map((p) => {
+                  const initials = p.nama_lengkap.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+                  const selected = form[activePicker.field] === p.id;
+                  return (
+                    <button key={p.id} type="button"
+                      onClick={() => { set(activePicker.field, p.id); setActivePicker(null); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${selected ? "bg-indigo-50 text-indigo-700" : "active:bg-slate-50 text-slate-700"}`}>
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${p.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
+                        {initials}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="font-medium block truncate">{p.nama_panggilan || p.nama_lengkap.split(" ")[0]}</span>
+                        <span className="text-[11px] text-slate-400 block truncate">{p.nama_lengkap}</span>
+                      </span>
+                      {selected && <svg className="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        ) : (
+
+        // ── Form ──────────────────────────────────────────────────────────
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 md:px-6 py-4 md:py-5 space-y-4">
           {/* Photo */}
           <div className="flex items-center gap-4">
@@ -1230,6 +1220,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                   onChange={(id) => set("ayah_id", id)}
                   options={otherPersons.filter((p) => p.jenis_kelamin === "LAKI_LAKI")}
                   placeholder="– tidak ada –"
+                  onMobilePick={isMobilePanel ? () => setActivePicker({ field: "ayah_id", options: otherPersons.filter((p) => p.jenis_kelamin === "LAKI_LAKI"), placeholder: "Pilih Ayah", search: "" }) : undefined}
                 />
               </div>
               <div>
@@ -1239,6 +1230,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                   onChange={(id) => set("ibu_id", id)}
                   options={otherPersons.filter((p) => p.jenis_kelamin === "PEREMPUAN")}
                   placeholder="– tidak ada –"
+                  onMobilePick={isMobilePanel ? () => setActivePicker({ field: "ibu_id", options: otherPersons.filter((p) => p.jenis_kelamin === "PEREMPUAN"), placeholder: "Pilih Ibu", search: "" }) : undefined}
                 />
               </div>
             </div>
@@ -1261,6 +1253,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                   onChange={(id) => set("pasangan_id", id)}
                   options={otherPersons}
                   placeholder="– belum menikah –"
+                  onMobilePick={isMobilePanel ? () => setActivePicker({ field: "pasangan_id", options: otherPersons, placeholder: "Pilih Pasangan", search: "" }) : undefined}
                 />
               </div>
               {form.pasangan_id && (
@@ -1277,21 +1270,24 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             </div>
           </div>
         </div>
+        )} {/* end activePicker ternary */}
 
-        {/* Panel footer */}
-        <div className="px-4 md:px-6 py-4 border-t border-slate-100 flex gap-2 flex-shrink-0">
-          <button
-            onClick={handleSave}
-            disabled={saving || !form.nama_lengkap.trim()}
-            className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-          >
-            {saving ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Simpan"}
-          </button>
-          <button onClick={closePanel}
-            className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-            Batal
-          </button>
-        </div>
+        {/* Panel footer — hidden when picker is active */}
+        {!activePicker && (
+          <div className="px-4 md:px-6 py-4 border-t border-slate-100 flex gap-2 flex-shrink-0">
+            <button
+              onClick={handleSave}
+              disabled={saving || !form.nama_lengkap.trim()}
+              className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Simpan"}
+            </button>
+            <button onClick={closePanel}
+              className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+              Batal
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
