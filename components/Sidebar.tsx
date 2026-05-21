@@ -142,66 +142,67 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
   // ── Mobile picker view (replaces detail content) ──
   if (pickerMode && isMobile) {
     return (
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center gap-2 px-4 pt-4 pb-3 flex-shrink-0 border-b border-slate-100">
-          <button
-            onClick={() => { setPickerMode(false); setPickerSearch(""); }}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 transition-colors flex-shrink-0"
-            aria-label="Kembali"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <p className="flex-1 font-semibold text-slate-800 text-center">Pilih Anggota</p>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
-            aria-label="Tutup"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="px-4 py-3 flex-shrink-0">
-          <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 rounded-xl">
-            <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              ref={pickerSearchRef}
-              type="text"
-              placeholder="Cari nama..."
-              value={pickerSearch}
-              onChange={(e) => setPickerSearch(e.target.value)}
-              className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400"
-            />
-            {pickerSearch && (
-              <button onClick={() => setPickerSearch("")} className="text-slate-400 hover:text-slate-600">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
+      // Single scroll container — header+search sticky, list flows naturally
+      <div className="h-full overflow-y-auto overscroll-contain">
+        {/* Sticky header + search */}
+        <div className="sticky top-0 bg-white z-10 border-b border-slate-100">
+          <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+            <button
+              onClick={() => { setPickerMode(false); setPickerSearch(""); }}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 transition-colors flex-shrink-0"
+              aria-label="Kembali"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <p className="flex-1 font-semibold text-slate-800 text-center">Pilih Anggota</p>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+              aria-label="Tutup"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="px-4 pb-3">
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 rounded-xl">
+              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                ref={pickerSearchRef}
+                type="text"
+                placeholder="Cari nama..."
+                value={pickerSearch}
+                onChange={(e) => setPickerSearch(e.target.value)}
+                className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400"
+              />
+              {pickerSearch && (
+                <button onClick={() => setPickerSearch("")} className="text-slate-400 hover:text-slate-600">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* List */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-8">
-          {pickerFiltered.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-10">Tidak ditemukan</p>
-          ) : (
-            pickerFiltered.map((p) => (
+        {/* List — flows naturally inside the scroll container */}
+        {pickerFiltered.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-10">Tidak ditemukan</p>
+        ) : (
+          <div className="pb-8">
+            {pickerFiltered.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => selectPerson(p.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                  p.id === compareId ? "bg-indigo-50" : "hover:bg-slate-50"
+                  p.id === compareId ? "bg-indigo-50" : "active:bg-slate-50"
                 }`}
               >
                 <span
@@ -223,9 +224,9 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
                   </svg>
                 )}
               </button>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
