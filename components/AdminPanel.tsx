@@ -821,7 +821,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                   : "Belum ada anggota."}
               </p>
             </div>
-          ) : filtered.map((p, i) => {
+          ) : filtered.map((p) => {
             const ayahId = getAyah(p.id);
             const ibuId = getIbu(p.id);
             const spouseId = getSpouseId(p.id);

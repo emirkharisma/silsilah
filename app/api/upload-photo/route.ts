@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
   }
 
   const formData = await req.formData();
-  const file = formData.get("file") as File | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const file = (formData as any).get("file") as File | null;
 
   if (!file) {
     return NextResponse.json({ error: "File wajib" }, { status: 400 });
