@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { signOut } from "next-auth/react";
 import { Person, Relationship, Marriage, JenisKelamin, StatusPernikahan } from "@prisma/client";
+
+const PhotoCropper = dynamic(() => import("./PhotoCropper"), { ssr: false });
 
 // ── Reusable searchable person picker (desktop dropdown only)  ─────────────────
 // On mobile the parent panel swaps content — onMobilePick() is called instead.
@@ -210,6 +213,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
   const [panelOpen, setPanelOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   // Mobile detection for panel layout
   const [isMobilePanel, setIsMobilePanel] = useState(false);
@@ -402,11 +406,29 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
     return editingId ? "Edit Anggota" : "Tambah Anggota";
   }
 
-  async function handlePhotoUpload(file: File) {
+  // Step 1: validate + show cropper
+  function handlePhotoSelect(file: File) {
+    const MAX = 10 * 1024 * 1024;
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      alert("Hanya file JPG dan PNG yang diizinkan.");
+      return;
+    }
+    if (file.size > MAX) {
+      alert("Ukuran file maksimal 10 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  // Step 2: upload cropped blob
+  async function handleCropConfirm(blob: Blob) {
+    setCropSrc(null);
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", new File([blob], "photo.jpg", { type: "image/jpeg" }));
       const res = await fetch("/api/upload-photo", { method: "POST", body: fd });
       if (!res.ok) throw new Error(await res.text());
       const { url } = await res.json();
@@ -1201,7 +1223,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                 </svg>
                 <span className="text-slate-600">{uploading ? "Mengupload..." : form.foto_url ? "Ganti foto" : "Upload foto"}</span>
                 <input type="file" accept="image/jpeg,image/png" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }} />
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoSelect(f); e.target.value = ""; }} />
               </label>
               <p className="text-[11px] text-slate-400 mt-1">JPG / PNG · maks. 10 MB</p>
               {form.foto_url && (
@@ -1344,6 +1366,15 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
           </div>
         )}
       </div>
+
+      {/* ── Photo cropper ── */}
+      {cropSrc && (
+        <PhotoCropper
+          imageSrc={cropSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
 
       {/* ── Mobile filter bottom sheet ── */}
       {filterSheetOpen && (
