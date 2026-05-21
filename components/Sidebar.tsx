@@ -191,7 +191,7 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto overscroll-contain pb-8">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-8">
           {pickerFiltered.length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-10">Tidak ditemukan</p>
           ) : (
