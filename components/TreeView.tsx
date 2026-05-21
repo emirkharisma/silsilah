@@ -51,7 +51,7 @@ function AutoCenter({ selectedPersonId, nodes }: { selectedPersonId?: string; no
         // Shift cy UP so node appears at the visible-area centre:
         //   offset = (50% − 11%) × viewportHeight / zoom
         const visibleCentre = (1 - 0.78) / 2; // 11% from top
-        cy -= ((0.5 - visibleCentre) * window.innerHeight) / zoom;
+        cy += ((0.5 - visibleCentre) * window.innerHeight) / zoom;
       }
     }
 
