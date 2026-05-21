@@ -515,15 +515,15 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center gap-3 sticky top-0 z-20">
-        <a href="/" className="flex items-center gap-1.5 text-slate-400 hover:text-slate-700 text-sm transition-colors">
+      <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center gap-2 md:gap-3 sticky top-0 z-20">
+        <a href="/" className="flex items-center gap-1.5 text-slate-400 hover:text-slate-700 text-sm transition-colors flex-shrink-0">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Pohon Keluarga
+          <span className="hidden sm:inline">Pohon Keluarga</span>
         </a>
-        <span className="text-slate-200">|</span>
-        <div className="flex items-center gap-2">
+        <span className="text-slate-200 hidden sm:inline">|</span>
+        <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center">
             <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -532,28 +532,31 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
           </div>
           <h1 className="font-semibold text-slate-800 text-sm">Admin Panel</h1>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
           <button
             onClick={openNew}
-            className="flex items-center gap-1.5 text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            className="flex items-center gap-1.5 text-sm px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Tambah Anggota
+            <span className="hidden sm:inline">Tambah Anggota</span>
           </button>
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-2 rounded-lg transition-colors hover:bg-slate-50"
+            className="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 px-2 md:px-3 py-2 rounded-lg transition-colors hover:bg-slate-50"
           >
-            Logout
+            <span className="hidden sm:inline">Logout</span>
+            <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
           </button>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto p-6 space-y-5">
+      <div className="max-w-6xl mx-auto p-3 md:p-6 space-y-4 md:space-y-5">
         {/* Stats cards */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           {[
             { label: "Total Anggota", value: stats.total, color: "bg-indigo-50 text-indigo-700 border-indigo-100" },
             { label: "Laki-laki", value: stats.laki, color: "bg-blue-50 text-blue-700 border-blue-100" },
@@ -568,8 +571,8 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
         </div>
 
         {/* Search & filter bar */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-3">
+          <div className="relative flex-1 sm:max-w-sm">
             <svg className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -589,6 +592,7 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             )}
           </div>
 
+          <div className="flex items-center gap-2 flex-wrap">
           {/* Gender filter */}
           <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
             {(["ALL", "LAKI_LAKI", "PEREMPUAN"] as FilterGender[]).map((v) => (
@@ -618,14 +622,15 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
               </button>
             ))}
           </div>
+          </div>{/* end filter groups wrapper */}
 
-          <span className="text-xs text-slate-400 ml-auto">
+          <span className="text-xs text-slate-400 hidden sm:block sm:ml-auto">
             {filtered.length} dari {persons.length} anggota
           </span>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        {/* Table — desktop only */}
+        <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
@@ -804,6 +809,85 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
               )}
             </div>
           )}
+        </div>
+
+        {/* Card list — mobile only */}
+        <div className="md:hidden space-y-2">
+          {filtered.length === 0 ? (
+            <div className="py-12 text-center bg-white rounded-2xl border border-slate-200">
+              <p className="text-sm text-slate-400">
+                {search || filterGender !== "ALL" || filterStatus !== "ALL"
+                  ? "Tidak ada anggota yang cocok."
+                  : "Belum ada anggota."}
+              </p>
+            </div>
+          ) : filtered.map((p, i) => {
+            const ayahId = getAyah(p.id);
+            const ibuId = getIbu(p.id);
+            const spouseId = getSpouseId(p.id);
+            const marriage = getMarriage(p.id);
+            const isMale = p.jenis_kelamin === "LAKI_LAKI";
+            return (
+              <div key={p.id} className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  {p.foto_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.foto_url} alt={p.nama_lengkap} className={`w-10 h-10 rounded-full object-cover flex-shrink-0 ${p.is_deceased ? "grayscale opacity-60" : ""}`} />
+                  ) : (
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${isMale ? "bg-blue-50 text-blue-600" : "bg-pink-50 text-pink-600"}`}>
+                      {p.nama_lengkap[0]}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className={`font-medium text-sm ${p.is_deceased ? "text-slate-400" : "text-slate-800"}`}>
+                        {p.nama_panggilan || p.nama_lengkap.split(" ")[0]}
+                        {p.is_deceased && (
+                          <svg className="inline w-3 h-3 ml-1 text-slate-400 -translate-y-px" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75 9.75 9.75 0 0 1 8.25 6c0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 2.25 12c0 5.385 4.365 9.75 9.75 9.75 4.93 0 9.022-3.657 9.752-8.998Z" />
+                          </svg>
+                        )}
+                      </p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isMale ? "bg-blue-50 text-blue-600" : "bg-pink-50 text-pink-600"}`}>
+                        {isMale ? "L" : "P"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 truncate">{p.nama_lengkap}</p>
+                    {(ayahId || ibuId) && (
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        👪 {[ayahId && getName(ayahId), ibuId && getName(ibuId)].filter(Boolean).join(" & ")}
+                      </p>
+                    )}
+                    {spouseId && (
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        ❤️ {getName(spouseId)}
+                        {marriage?.status === "CERAI" && <span className="ml-1 text-orange-400">(cerai)</span>}
+                      </p>
+                    )}
+                  </div>
+                  {/* Actions always visible on mobile */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => setViewPersonId(p.id)} title="Lihat" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
+                    <button onClick={() => openEdit(p)} title="Edit" className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button onClick={() => handleDelete(p.id)} title="Hapus" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
