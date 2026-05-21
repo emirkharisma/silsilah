@@ -50,8 +50,8 @@ function AutoCenter({ selectedPersonId, nodes }: { selectedPersonId?: string; no
         // setCenter puts the flow point at viewport centre (50% from top).
         // Shift cy UP so node appears at the visible-area centre:
         //   offset = (50% − 11%) × viewportHeight / zoom
-        // Target node at ~32% from top — balances short vs tall sheet heights
-        cy += (0.5 - 0.32) * window.innerHeight / zoom;
+        // Target node at ~18% from top — sits clearly above the bottom sheet
+        cy += (0.5 - 0.18) * window.innerHeight / zoom;
       }
     }
 

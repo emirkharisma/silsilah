@@ -107,7 +107,7 @@ export default function Sidebar({ person, allPersons, onClose, comparePersonId: 
       {/* ── Hero photo banner ── */}
       <div className="relative flex-shrink-0">
         {/* Photo or gradient placeholder */}
-        <div className={`w-full h-52 overflow-hidden ${person.foto_url ? "" : isMale ? "bg-gradient-to-br from-blue-100 to-blue-200" : "bg-gradient-to-br from-pink-100 to-pink-200"}`}>
+        <div className={`w-full aspect-[4/3] md:aspect-square overflow-hidden ${person.foto_url ? "" : isMale ? "bg-gradient-to-br from-blue-100 to-blue-200" : "bg-gradient-to-br from-pink-100 to-pink-200"}`}>
           {person.foto_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
