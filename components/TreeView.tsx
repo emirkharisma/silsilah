@@ -145,7 +145,7 @@ export default function TreeView({
   // Constrain panning so the user can't scroll far from the tree content
   const translateExtent = useMemo((): [[number, number], [number, number]] => {
     if (nodes.length === 0) return [[-400, -400], [400, 400]];
-    const pad = 400; // breathing room around the tree
+    const pad = 1600; // breathing room around the tree
     const xs = nodes.map((n) => n.position.x);
     const ys = nodes.map((n) => n.position.y);
     return [
