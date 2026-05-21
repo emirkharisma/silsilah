@@ -1203,8 +1203,9 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
                 <input type="file" accept="image/jpeg,image/png" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }} />
               </label>
+              <p className="text-[11px] text-slate-400 mt-1">JPG / PNG · maks. 5 MB</p>
               {form.foto_url && (
-                <button onClick={() => set("foto_url", "")} className="text-xs text-red-400 hover:text-red-600 mt-1">
+                <button onClick={() => set("foto_url", "")} className="text-xs text-red-400 hover:text-red-600 mt-0.5">
                   Hapus foto
                 </button>
               )}
