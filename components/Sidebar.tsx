@@ -100,56 +100,67 @@ export default function Sidebar({ person, allPersons, onClose, comparePersonId: 
     }
   };
 
+  const isMale = person.jenis_kelamin === "LAKI_LAKI";
+
   return (
     <aside className="flex flex-col">
-      {/* Header */}
-      <div className="p-5 border-b border-slate-100 flex-shrink-0">
+      {/* ── Hero photo banner ── */}
+      <div className="relative flex-shrink-0">
+        {/* Photo or gradient placeholder */}
+        <div className={`w-full h-52 overflow-hidden ${person.foto_url ? "" : isMale ? "bg-gradient-to-br from-blue-100 to-blue-200" : "bg-gradient-to-br from-pink-100 to-pink-200"}`}>
+          {person.foto_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={person.foto_url}
+              alt={person.nama_lengkap}
+              className={`w-full h-full object-cover ${person.is_deceased ? "grayscale opacity-80" : ""}`}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className={`text-6xl font-bold ${isMale ? "text-blue-300" : "text-pink-300"}`}>
+                {initials}
+              </span>
+            </div>
+          )}
+          {/* Bottom gradient overlay */}
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
+        </div>
+
+        {/* Close button */}
         <button
           onClick={onClose}
-          className="float-right w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors backdrop-blur-sm"
           aria-label="Tutup"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-        <div className="flex items-center gap-3 mb-3">
-          {person.foto_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={person.foto_url} alt={person.nama_lengkap} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
-          ) : (
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0 ${person.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
-              {initials}
-            </div>
-          )}
-          <div className="overflow-hidden">
-            <p className="font-semibold text-slate-800 truncate">
-              {person.nama_panggilan || person.nama_lengkap.split(" ")[0]}
-            </p>
-            <p className="text-xs text-slate-500 truncate">{person.nama_lengkap}</p>
-            {person.is_deceased && (
-              <span className="text-[10px] text-slate-400 italic">
-                {person.jenis_kelamin === "LAKI_LAKI" ? "almarhum" : "almarhumah"}
-              </span>
-            )}
-          </div>
-        </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${person.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
-            {person.jenis_kelamin === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
-          </span>
-          {person.urutan_lahir && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
-              Anak ke-{person.urutan_lahir}
-            </span>
-          )}
-          {person.is_deceased && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
-              {person.jenis_kelamin === "LAKI_LAKI" ? "Almarhum" : "Almarhumah"}
-            </span>
-          )}
+        {/* Name overlaid on gradient */}
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+          <p className="font-bold text-lg text-white leading-tight truncate drop-shadow">
+            {person.nama_panggilan || person.nama_lengkap.split(" ")[0]}
+          </p>
+          <p className="text-xs text-white/75 truncate drop-shadow">{person.nama_lengkap}</p>
         </div>
+      </div>
+
+      {/* Badges */}
+      <div className="px-5 pt-3 pb-3 border-b border-slate-100 flex gap-2 flex-wrap flex-shrink-0">
+        <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isMale ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
+          {isMale ? "Laki-laki" : "Perempuan"}
+        </span>
+        {person.urutan_lahir && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+            Anak ke-{person.urutan_lahir}
+          </span>
+        )}
+        {person.is_deceased && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
+            {isMale ? "Almarhum" : "Almarhumah"}
+          </span>
+        )}
       </div>
 
       {/* Catatan */}
