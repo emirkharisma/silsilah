@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useDeferredValue, useMemo } from "react";
+import { useState, useCallback, useDeferredValue, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Sidebar from "./Sidebar";
+import MemberPickerSheet from "./MemberPickerSheet";
 import { PersonData, RelationshipData, MarriageData } from "@/lib/tree-layout";
 
 // Dynamically import TreeView to avoid SSR issues with React Flow
@@ -19,28 +20,30 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
 
-  // Compute the set of node IDs that should stay fully visible when a person is selected.
-  // Includes: the person themselves, their spouse(s), their children, their parents,
-  // and the couple-dot nodes that connect those relationships.
+  // Mobile picker state — lifted here so the scroll container is owned by TreePage
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [comparePersonId, setComparePersonId] = useState<string>("");
+
+  // Reset picker when selected person changes
+  useEffect(() => {
+    setPickerOpen(false);
+    setComparePersonId("");
+  }, [selectedPerson]);
+
   const highlightSet = useMemo((): Set<string> | null => {
     if (!selectedPerson) return null;
     const id = selectedPerson.id;
     const ids = new Set<string>([id]);
 
-    // Spouse(s) + couple node
     for (const m of marriages) {
       if (m.person_a_id === id || m.person_b_id === id) {
         ids.add(m.person_a_id === id ? m.person_b_id : m.person_a_id);
         ids.add(`couple-${m.id}`);
       }
     }
-
-    // Children (selected person is the parent in the relationship)
     for (const r of relationships) {
       if (r.related_id === id) ids.add(r.person_id);
     }
-
-    // Parents (selected person is the child in the relationship)
     const parentIds = new Set<string>();
     for (const r of relationships) {
       if (r.person_id === id) {
@@ -48,14 +51,11 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
         parentIds.add(r.related_id);
       }
     }
-
-    // Parent couple node(s)
     for (const m of marriages) {
       if (parentIds.has(m.person_a_id) || parentIds.has(m.person_b_id)) {
         ids.add(`couple-${m.id}`);
       }
     }
-
     return ids;
   }, [selectedPerson, marriages, relationships]);
 
@@ -73,6 +73,10 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
 
   const handlePersonSelect = useCallback((person: PersonData | null) => {
     setSelectedPerson(person);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setSelectedPerson(null);
   }, []);
 
   return (
@@ -97,12 +101,7 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
             onChange={(e) => setSearch(e.target.value)}
             className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 pl-8 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-slate-50"
           />
-          <svg
-            className="absolute left-2.5 top-2 w-4 h-4 text-slate-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
+          <svg className="absolute left-2.5 top-2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
 
@@ -112,24 +111,13 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
                 <button
                   key={p.id}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-2"
-                  onClick={() => {
-                    setSelectedPerson(p);
-                    setSearch("");
-                  }}
+                  onClick={() => { setSelectedPerson(p); setSearch(""); }}
                 >
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${
-                      p.jenis_kelamin === "LAKI_LAKI"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-pink-100 text-pink-700"
-                    }`}
-                  >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${p.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
                     {p.nama_lengkap[0]}
                   </div>
                   <div>
-                    <p className="font-medium text-slate-800">
-                      {p.nama_panggilan || p.nama_lengkap.split(" ")[0]}
-                    </p>
+                    <p className="font-medium text-slate-800">{p.nama_panggilan || p.nama_lengkap.split(" ")[0]}</p>
                     <p className="text-[10px] text-slate-400">{p.nama_lengkap}</p>
                   </div>
                 </button>
@@ -155,45 +143,59 @@ export default function TreePage({ persons, relationships, marriages }: TreePage
         />
 
         {/* ── Desktop: right slide-in panel (md+) ── */}
-        <div
-          className={`
-            hidden md:block
-            absolute top-0 right-0 h-full w-80 bg-white border-l border-slate-200 shadow-xl
-            transition-transform duration-300 ease-in-out z-10
-            ${selectedPerson ? "translate-x-0" : "translate-x-full"}
-          `}
-        >
-          <Sidebar person={selectedPerson} allPersons={persons} onClose={() => handlePersonSelect(null)} />
+        <div className={`
+          hidden md:block
+          absolute top-0 right-0 h-full w-80 bg-white border-l border-slate-200 shadow-xl
+          transition-transform duration-300 ease-in-out z-10
+          ${selectedPerson ? "translate-x-0" : "translate-x-full"}
+        `}>
+          <Sidebar
+            person={selectedPerson}
+            allPersons={persons}
+            onClose={handleClose}
+          />
         </div>
 
         {/* ── Mobile: bottom sheet (<md) ── */}
-        {/* Backdrop */}
         <div
-          className={`
-            md:hidden absolute inset-0 bg-black/30 z-10
-            transition-opacity duration-300
-            ${selectedPerson ? "opacity-100" : "opacity-0 pointer-events-none"}
-          `}
-          onClick={() => handlePersonSelect(null)}
+          className={`md:hidden absolute inset-0 bg-black/30 z-10 transition-opacity duration-300 ${selectedPerson ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          onClick={handleClose}
         />
-        {/* Sheet */}
-        <div
-          className={`
-            md:hidden absolute bottom-0 left-0 right-0 z-20
-            bg-white rounded-t-3xl shadow-2xl overflow-hidden
-            flex flex-col
-            transition-transform duration-300 ease-in-out
-            max-h-[78vh]
-            ${selectedPerson ? "translate-y-0" : "translate-y-full"}
-          `}
-        >
-          {/* Drag handle */}
-          <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-            <div className="w-10 h-1 rounded-full bg-slate-200" />
-          </div>
-          {/* Scrollable content */}
-          <div className="flex-1 min-h-0">
-            <Sidebar person={selectedPerson} allPersons={persons} onClose={() => handlePersonSelect(null)} />
+        <div className={`
+          md:hidden absolute bottom-0 left-0 right-0 z-20
+          bg-white rounded-t-3xl shadow-2xl overflow-hidden
+          flex flex-col
+          transition-transform duration-300 ease-in-out
+          max-h-[78vh]
+          ${selectedPerson ? "translate-y-0" : "translate-y-full"}
+        `}>
+          {/* Drag handle — only show in detail view */}
+          {!pickerOpen && (
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-slate-200" />
+            </div>
+          )}
+
+          {/* THE scroll container — owns all scrolling on mobile */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            {pickerOpen ? (
+              <MemberPickerSheet
+                persons={persons}
+                excludeId={selectedPerson?.id}
+                selectedId={comparePersonId}
+                onSelect={(p) => { setComparePersonId(p.id); setPickerOpen(false); }}
+                onBack={() => setPickerOpen(false)}
+                onClose={handleClose}
+              />
+            ) : (
+              <Sidebar
+                person={selectedPerson}
+                allPersons={persons}
+                onClose={handleClose}
+                comparePersonId={comparePersonId}
+                onOpenPicker={() => setPickerOpen(true)}
+              />
+            )}
           </div>
         </div>
       </div>

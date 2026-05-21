@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { PersonData } from "@/lib/tree-layout";
 
 interface SidebarProps {
   person: PersonData | null;
   allPersons: PersonData[];
   onClose: () => void;
+  // Mobile picker — controlled from TreePage
+  comparePersonId?: string;
+  onOpenPicker?: () => void;
 }
 
 interface RelationResult {
@@ -14,46 +17,30 @@ interface RelationResult {
 }
 
 function getInitials(p: PersonData) {
-  return p.nama_lengkap
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
+  return p.nama_lengkap.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
-export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
-  const [compareId, setCompareId] = useState<string>("");
-  const [relation, setRelation] = useState<RelationResult | null>(null);
-  const [loadingRelation, setLoadingRelation] = useState(false);
-
-  // Desktop dropdown
+export default function Sidebar({ person, allPersons, onClose, comparePersonId: externalCompareId, onOpenPicker }: SidebarProps) {
+  // On desktop: internal dropdown state. On mobile: controlled externally via props.
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownSearch, setDropdownSearch] = useState("");
+  const [internalCompareId, setInternalCompareId] = useState<string>("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const desktopSearchRef = useRef<HTMLInputElement>(null);
 
-  // Mobile: replace sheet content with picker view
-  const [pickerMode, setPickerMode] = useState(false);
-  const [pickerSearch, setPickerSearch] = useState("");
-  const pickerSearchRef = useRef<HTMLInputElement>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const [relation, setRelation] = useState<RelationResult | null>(null);
+  const [loadingRelation, setLoadingRelation] = useState(false);
 
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
+  // Use external compareId on mobile (when onOpenPicker is provided), else internal
+  const compareId = onOpenPicker ? (externalCompareId ?? "") : internalCompareId;
+  const setCompareId = (id: string) => { if (!onOpenPicker) setInternalCompareId(id); };
 
   // Reset on person change
   useEffect(() => {
-    setCompareId("");
+    setInternalCompareId("");
     setRelation(null);
     setDropdownOpen(false);
     setDropdownSearch("");
-    setPickerMode(false);
-    setPickerSearch("");
   }, [person]);
 
   // Fetch relation
@@ -85,33 +72,7 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
     if (dropdownOpen) setTimeout(() => desktopSearchRef.current?.focus(), 50);
   }, [dropdownOpen]);
 
-  // Mobile picker: focus search when opened
-  useEffect(() => {
-    if (pickerMode) setTimeout(() => pickerSearchRef.current?.focus(), 100);
-  }, [pickerMode]);
-
-  const handleTriggerClick = () => {
-    if (isMobile) {
-      setPickerSearch("");
-      setPickerMode(true);
-    } else {
-      setDropdownOpen((v) => !v);
-      setDropdownSearch("");
-    }
-  };
-
-  const selectPerson = useCallback((id: string) => {
-    setCompareId(id);
-    setDropdownOpen(false);
-    setDropdownSearch("");
-    setPickerMode(false);
-    setPickerSearch("");
-  }, []);
-
-  const others = useMemo(
-    () => allPersons.filter((p) => p.id !== person?.id),
-    [allPersons, person]
-  );
+  const others = useMemo(() => allPersons.filter((p) => p.id !== person?.id), [allPersons, person]);
 
   const desktopFiltered = useMemo(() => {
     const q = dropdownSearch.toLowerCase().trim();
@@ -123,117 +84,24 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
     );
   }, [others, dropdownSearch]);
 
-  const pickerFiltered = useMemo(() => {
-    const q = pickerSearch.toLowerCase().trim();
-    if (!q) return others;
-    return others.filter(
-      (p) =>
-        p.nama_lengkap.toLowerCase().includes(q) ||
-        (p.nama_panggilan?.toLowerCase().includes(q) ?? false)
-    );
-  }, [others, pickerSearch]);
-
-  const selectedPerson2 = others.find((p) => p.id === compareId);
+  const selectedPerson2 = allPersons.find((p) => p.id === compareId && p.id !== person?.id);
 
   if (!person) return null;
 
   const initials = getInitials(person);
+  const isMobile = !!onOpenPicker;
 
-  // ── Mobile picker view (replaces detail content) ──
-  if (pickerMode && isMobile) {
-    return (
-      // Single scroll container — header+search sticky, list flows naturally
-      <div className="h-full overflow-y-auto overscroll-contain">
-        {/* Sticky header + search */}
-        <div className="sticky top-0 bg-white z-10 border-b border-slate-100">
-          <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-            <button
-              onClick={() => { setPickerMode(false); setPickerSearch(""); }}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 transition-colors flex-shrink-0"
-              aria-label="Kembali"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <p className="flex-1 font-semibold text-slate-800 text-center">Pilih Anggota</p>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
-              aria-label="Tutup"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="px-4 pb-3">
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 rounded-xl">
-              <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                ref={pickerSearchRef}
-                type="text"
-                placeholder="Cari nama..."
-                value={pickerSearch}
-                onChange={(e) => setPickerSearch(e.target.value)}
-                className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400"
-              />
-              {pickerSearch && (
-                <button onClick={() => setPickerSearch("")} className="text-slate-400 hover:text-slate-600">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+  const handleTriggerClick = () => {
+    if (isMobile) {
+      onOpenPicker!();
+    } else {
+      setDropdownOpen((v) => !v);
+      setDropdownSearch("");
+    }
+  };
 
-        {/* List — flows naturally inside the scroll container */}
-        {pickerFiltered.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-10">Tidak ditemukan</p>
-        ) : (
-          <div className="pb-8">
-            {pickerFiltered.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => selectPerson(p.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                  p.id === compareId ? "bg-indigo-50" : "active:bg-slate-50"
-                }`}
-              >
-                <span
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
-                    p.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
-                  }`}
-                >
-                  {getInitials(p)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className={`font-medium block truncate text-sm ${p.id === compareId ? "text-indigo-700" : "text-slate-800"}`}>
-                    {p.nama_panggilan || p.nama_lengkap.split(" ")[0]}
-                  </span>
-                  <span className="text-xs text-slate-400 block truncate">{p.nama_lengkap}</span>
-                </span>
-                {p.id === compareId && (
-                  <svg className="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ── Normal detail view ──
   return (
-    <aside className="flex flex-col overflow-y-auto h-full overscroll-contain">
+    <aside className="flex flex-col">
       {/* Header */}
       <div className="p-5 border-b border-slate-100 flex-shrink-0">
         <button
@@ -248,19 +116,9 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
         <div className="flex items-center gap-3 mb-3">
           {person.foto_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={person.foto_url}
-              alt={person.nama_lengkap}
-              className="w-14 h-14 rounded-full object-cover flex-shrink-0"
-            />
+            <img src={person.foto_url} alt={person.nama_lengkap} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
           ) : (
-            <div
-              className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0 ${
-                person.jenis_kelamin === "LAKI_LAKI"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-pink-100 text-pink-700"
-              }`}
-            >
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0 ${person.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
               {initials}
             </div>
           )}
@@ -278,13 +136,7 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          <span
-            className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
-              person.jenis_kelamin === "LAKI_LAKI"
-                ? "bg-blue-100 text-blue-700"
-                : "bg-pink-100 text-pink-700"
-            }`}
-          >
+          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${person.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
             {person.jenis_kelamin === "LAKI_LAKI" ? "Laki-laki" : "Perempuan"}
           </span>
           {person.urutan_lahir && (
@@ -302,7 +154,7 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
 
       {/* Catatan */}
       {person.catatan && (
-        <div className="px-5 pt-4 pb-0 flex-shrink-0">
+        <div className="px-5 pt-4 pb-0">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Catatan</p>
           <p className="text-sm text-slate-600 leading-relaxed">{person.catatan}</p>
         </div>
@@ -323,21 +175,12 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
               w-full flex items-center justify-between gap-2
               text-sm border rounded-xl px-3 py-2.5 bg-white
               transition-all duration-150 text-left
-              ${dropdownOpen
-                ? "border-indigo-400 ring-2 ring-indigo-100"
-                : "border-slate-200 hover:border-slate-300"
-              }
+              ${dropdownOpen ? "border-indigo-400 ring-2 ring-indigo-100" : "border-slate-200 hover:border-slate-300"}
             `}
           >
             {selectedPerson2 ? (
               <span className="flex items-center gap-2 min-w-0">
-                <span
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${
-                    selectedPerson2.jenis_kelamin === "LAKI_LAKI"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-pink-100 text-pink-700"
-                  }`}
-                >
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${selectedPerson2.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
                   {getInitials(selectedPerson2)}
                 </span>
                 <span className="font-medium text-slate-800 truncate">
@@ -358,8 +201,8 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
             </svg>
           </button>
 
-          {/* Desktop dropdown panel */}
-          {dropdownOpen && (
+          {/* Desktop-only dropdown panel */}
+          {dropdownOpen && !isMobile && (
             <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
               <div className="p-2 border-b border-slate-100">
                 <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
@@ -391,23 +234,14 @@ export default function Sidebar({ person, allPersons, onClose }: SidebarProps) {
                     <button
                       key={p.id}
                       type="button"
-                      onClick={() => selectPerson(p.id)}
-                      className={`
-                        w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors
-                        ${p.id === compareId ? "bg-indigo-50 text-indigo-700" : "hover:bg-slate-50 text-slate-700"}
-                      `}
+                      onClick={() => { setCompareId(p.id); setDropdownOpen(false); setDropdownSearch(""); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors ${p.id === compareId ? "bg-indigo-50 text-indigo-700" : "hover:bg-slate-50 text-slate-700"}`}
                     >
-                      <span
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${
-                          p.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
-                        }`}
-                      >
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${p.jenis_kelamin === "LAKI_LAKI" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
                         {getInitials(p)}
                       </span>
                       <span className="min-w-0">
-                        <span className="font-medium block truncate">
-                          {p.nama_panggilan || p.nama_lengkap.split(" ")[0]}
-                        </span>
+                        <span className="font-medium block truncate">{p.nama_panggilan || p.nama_lengkap.split(" ")[0]}</span>
                         <span className="text-[11px] text-slate-400 block truncate">{p.nama_lengkap}</span>
                       </span>
                       {p.id === compareId && (
