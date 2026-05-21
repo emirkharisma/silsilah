@@ -986,45 +986,57 @@ export default function AdminPanel({ initialPersons, initialRelationships, initi
             <div className="fixed inset-0 bg-black/30 z-50 backdrop-blur-[2px]" onClick={() => setViewPersonId(null)} />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm pointer-events-auto overflow-hidden">
-                {/* Modal header */}
-                <div className={`px-6 pt-6 pb-5 ${isMaleV ? "bg-blue-50" : "bg-pink-50"}`}>
-                  <div className="flex items-start gap-4">
-                    {vp.foto_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={vp.foto_url} alt={vp.nama_lengkap} className={`w-16 h-16 rounded-full object-cover flex-shrink-0 ${vp.is_deceased ? "grayscale opacity-70" : ""}`} />
-                    ) : (
-                      <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${isMaleV ? "bg-blue-200 text-blue-700" : "bg-pink-200 text-pink-700"}`}>
-                        {initialsV}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-bold text-lg leading-tight ${vp.is_deceased ? "text-slate-500" : "text-slate-800"}`}>
-                        {vp.nama_panggilan || vp.nama_lengkap.split(" ")[0]}
-                        {vp.is_deceased && (
-                          <svg className="inline w-3.5 h-3.5 ml-1.5 text-slate-400 -translate-y-px" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75 9.75 9.75 0 0 1 8.25 6c0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 2.25 12c0 5.385 4.365 9.75 9.75 9.75 4.93 0 9.022-3.657 9.752-8.998Z" />
-                          </svg>
-                        )}
-                      </p>
-                      <p className="text-sm text-slate-500 truncate">{vp.nama_lengkap}</p>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isMaleV ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
-                          {isMaleV ? "Laki-laki" : "Perempuan"}
-                        </span>
-                        {vp.urutan_lahir && (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Anak ke-{vp.urutan_lahir}</span>
-                        )}
-                        {vp.is_deceased && (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">{isMaleV ? "Almarhum" : "Almarhumah"}</span>
-                        )}
-                      </div>
+                {/* Hero photo banner */}
+                <div className="relative w-full aspect-square overflow-hidden">
+                  {vp.foto_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={vp.foto_url} alt={vp.nama_lengkap}
+                      className={`w-full h-full object-cover ${vp.is_deceased ? "grayscale opacity-80" : ""}`} />
+                  ) : (
+                    <div className={`w-full h-full flex items-center justify-center ${isMaleV ? "bg-gradient-to-br from-blue-100 to-blue-200" : "bg-gradient-to-br from-pink-100 to-pink-200"}`}>
+                      <span className={`text-7xl font-bold ${isMaleV ? "text-blue-300" : "text-pink-300"}`}>{initialsV}</span>
                     </div>
-                    <button onClick={() => setViewPersonId(null)} className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-white/80 transition-colors flex-shrink-0">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
+                  )}
+                  {/* Gradient overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black/65 to-transparent" />
+                  {/* Close button */}
+                  <button onClick={() => setViewPersonId(null)}
+                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors backdrop-blur-sm">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                  {/* Name overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+                    <p className="font-bold text-lg text-white leading-tight drop-shadow">
+                      {vp.nama_panggilan || vp.nama_lengkap.split(" ")[0]}
+                      {vp.is_deceased && (
+                        <svg className="inline w-3.5 h-3.5 ml-1.5 text-white/70 -translate-y-px" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75 9.75 9.75 0 0 1 8.25 6c0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 2.25 12c0 5.385 4.365 9.75 9.75 9.75 4.93 0 9.022-3.657 9.752-8.998Z" />
+                        </svg>
+                      )}
+                    </p>
+                    <p className="text-xs text-white/75 truncate drop-shadow">{vp.nama_lengkap}</p>
                   </div>
-                  {vp.catatan && <p className="mt-3 text-xs text-slate-500 leading-relaxed">{vp.catatan}</p>}
                 </div>
+
+                {/* Badges */}
+                <div className="px-5 pt-3 pb-3 border-b border-slate-100 flex flex-wrap gap-1.5">
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isMaleV ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
+                    {isMaleV ? "Laki-laki" : "Perempuan"}
+                  </span>
+                  {vp.urutan_lahir && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Anak ke-{vp.urutan_lahir}</span>
+                  )}
+                  {vp.is_deceased && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">{isMaleV ? "Almarhum" : "Almarhumah"}</span>
+                  )}
+                </div>
+
+                {/* Catatan */}
+                {vp.catatan && (
+                  <div className="px-5 pt-3 pb-0">
+                    <p className="text-xs text-slate-500 leading-relaxed">{vp.catatan}</p>
+                  </div>
+                )}
 
                 {/* Relations */}
                 <div className="px-6 py-4 space-y-3">
